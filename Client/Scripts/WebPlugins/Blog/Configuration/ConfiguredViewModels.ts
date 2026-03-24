@@ -6,11 +6,20 @@ import { BlogPreviewer } from "../ViewModels/BlogPreviewer.js"
 
 export const constructHomeViewModel = ()=>{return Utility.BundleViewAndModel(new ArticleModel(
     "/BlogViews/Home.html", "Welcome To My Skunkworks!", "/Images/Blogs/jupiter.jpg", ["Where am I? Who am I?", "The Vision", "What's Cooking?", "What Drives Me"], ["General", "Welcome"], new Date(2026, 1, 22).toDateString(), "William Chenevert"))}
+
 export const constructMinecraftProjectsViewModel = ()=>{return Utility.BundleViewAndModel(
     new ArticleModel("/BlogViews/Minecraft Projects.html", "Super Duper Smelter", "/Images/Blogs/minecraft-thumbnail.jpeg", [
         "Problem", "Attempts", "Controlling input", "Elements of the solution", "Additional Elements"
     ], ["Video Games"], new Date(2026, 1, 22).toDateString(), "William Chenevert"))
 }
+
+export const constructTasteyBabybackRibsViewModel = ()=>{return Utility.BundleViewAndModel(
+    new ArticleModel("/BlogViews/Recipes/TasteyBabybackRibs.html", "Tasty Babyback Ribs", "/Images/Blogs/IMG_9781.jpeg", [
+        "The Dry Rub",
+        "The Braising Liquid",
+        "The Finishing Glaze",
+        "Instructions"
+    ], ["Recipes"], new Date(2026, 2, 23).toDateString(), "William Chenevert"))}
 
 export const constructSpaceEngineersViewModel = ()=>{return Utility.BundleViewAndModel(
     new ArticleModel("/BlogViews/Space Engineers Research.html", "Gravity Drive", "/Images/Blogs/Space Engineers.jpg", [
@@ -136,9 +145,10 @@ const assemblePageOption = (articleConstructor : ()=>IPartialViewModel<ArticleMo
 } }
 
 export const constructBlogPreviewViewModel = ()=>{
-    return Utility.BundleViewAndModel(new BlogPreviewer([
+    const blogs = [
         assemblePageOption(constructMinecraftProjectsViewModel, "Autonomous Smelting Array Project in Minecraft"),
         assemblePageOption(constructSpaceEngineersViewModel, "Research on Gravity Drives in Space Engineers"),
+        assemblePageOption(constructTasteyBabybackRibsViewModel, "Best babyback ribs recipe ever"),
         assemblePageOption(constructSpringIDEPresentationViewModel, "An IDE Productivity Presentation for ACM Career"),
         assemblePageOption(constructFallPersonalProjectsViewModel, "A Personal Projects Presentation for ACM Career"),
         assemblePageOption(constructFallBehavioralInterviewsViewModel, "A Behavioral & Technical Interviewing Presentation for ACM Career"),
@@ -147,7 +157,9 @@ export const constructBlogPreviewViewModel = ()=>{
         assemblePageOption(constructFallResumeBuildingViewModel, "A Resume Building Workshop for ACM Career"),
         assemblePageOption(constructSpringInterviewPrepViewModel, "An Interview Prep Workshop for ACM Career"),
         assemblePageOption(constructSpringResumeReviewsViewModel, "A Spring Resume Reviews Workshop for ACM Career"),
-    ]))
+    ]
+
+    return Utility.BundleViewAndModel(new BlogPreviewer(blogs))
 }
 
 export const constructProjectPreviewViewModel = ()=>{

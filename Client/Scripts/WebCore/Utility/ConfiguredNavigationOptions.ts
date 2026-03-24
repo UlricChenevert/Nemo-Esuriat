@@ -1,4 +1,4 @@
-import { constructBlogPreviewViewModel, constructHomeViewModel, constructProjectPreviewViewModel } from "../../WebPlugins/Blog/Utility/ConfiguredViewModels.js"; //constructMinecraftProjectsViewModel, constructSpaceEngineersViewModel
+import { constructBlogPreviewViewModel, constructHomeViewModel, constructProjectPreviewViewModel } from "../../WebPlugins/Blog/Configuration/ConfiguredViewModels.js"; //constructMinecraftProjectsViewModel, constructSpaceEngineersViewModel
 import { PageOption, ResolveURLData } from "../Contracts/PageOption.js";
 import { constructUnknownViewModel } from "./ConfiguredViewModels.js";
 

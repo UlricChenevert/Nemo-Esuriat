@@ -34,13 +34,4 @@ export class BlogPreviewer implements IHTMLInjectable<void, ResolveURLData<void>
         // PopHistory()
         return UpdateHistoryAndPage(this.urlData.CurrentPageObservable, this.urlData, selectedOption).then(()=>this.isLoading(false));
     }
-
-    // async UpdatePage (selectedOption? : PageOption<void, void>) {
-    //     if (selectedOption === undefined) return;
-
-    //     document.dispatchEvent(new CustomEvent("pageChange" as customEvents, {
-    //     detail: selectedOption,
-    //     bubbles: true // Allows the event to propagate up the DOM tree
-    // }));
-    // }
 }
