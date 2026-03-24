@@ -11,6 +11,7 @@ export class WebPageController implements IHTMLInjectable<void> {
     readonly LogoImagePath = "/Images/logo.png";
 
     isLoading: Observable<boolean>;
+    HTMLandKnockoutRequestCallback : Promise<void> = Promise.resolve()
     NavigationOptions : PageOption<void, ResolveURLData<void>>[]
     CurrentPage : ko.Observable<IPartialViewModel<IHTMLInjectable<void, ResolveURLData<void>>>>
     CurrentURL : string[]
@@ -29,17 +30,19 @@ export class WebPageController implements IHTMLInjectable<void> {
         // });
     }
 
-    Init () : Promise<void> {
+    async Init () : Promise<void> {
+        await this.HTMLandKnockoutRequestCallback
+
         const url = window.location.pathname
         this.CurrentURL = url.split("/").filter((text)=>{return text != ""})
-        
-        if (this.CurrentURL.length == 0) 
+
+        if (this.CurrentURL.length == 0)
             return UpdateHistoryAndPage(this.CurrentPage, {CurrentPageObservable : this.CurrentPage, URLPath: this.CurrentURL}, this.NavigationOptions[0]).then(()=>this.isLoading(false));
 
         const desiredPage = this.CurrentURL.shift()
 
         let selectedPageOption = this.NavigationOptions.find((testOption)=>{return testOption.pageKey == desiredPage})
-        
+
         if (!selectedPageOption) {
             console.warn("Page not found, redirecting to " + this.NavigationOptions[0].FriendlyName);
             selectedPageOption = this.NavigationOptions[0];

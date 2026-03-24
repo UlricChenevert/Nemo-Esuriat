@@ -4,6 +4,9 @@ import { ko } from "../../Framework/Knockout/ko.js";
 import { ModeHandler } from "../../Unknown/Mode/ModeHandler.js";
 import { GraphicsConfig } from "../../Unknown/State/Config/GraphicsConfig.js";
 
+const MAIN_VIEW_ID = "main-view"
+const HTML_GAME_ID = "Game"
+
 export class UnknownModel implements IHTMLInjectable<void> {
     readonly ViewUrl = "WebPlugins/UnknownView.html";
     isLoading: Observable<boolean>;
@@ -18,9 +21,19 @@ export class UnknownModel implements IHTMLInjectable<void> {
         this.modeHandler = <ModeHandler>UnknownClassInstances.resolve(ModeHandler)
     }
 
-    async Init() { // Bug: Need to integrate with knockout or add one more level of model because to load, it needs Knockout to set up the HTML
-        const displayElement = await this.HTMLandKnockoutRequestCallback.then(()=>{return <HTMLElement>document.getElementById("Game")}) 
+    async Init() {
+        await this.HTMLandKnockoutRequestCallback
 
+        let parentElement = document.getElementById(MAIN_VIEW_ID)
+        if (!parentElement) {
+            console.error(MAIN_VIEW_ID + " not found! Please fix id in Unknown model!")
+            parentElement = document.body
+        }
+        
+        let displayElement = document.createElement("div")
+        displayElement.id = HTML_GAME_ID
+        parentElement.appendChild(displayElement)
+        
         console.log("Game starting up!");
 
         // Set up width

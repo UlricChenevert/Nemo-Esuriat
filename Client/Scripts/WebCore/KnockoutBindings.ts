@@ -25,9 +25,9 @@ export namespace KnockoutBindings {
 
                 bindingModel.Model.isLoading(true)
 
-                bindingModel.Model.HTMLandKnockoutRequestCallback = 
+                bindingModel.Model.HTMLandKnockoutRequestCallback =
                     Utility.injectHTML(element, Utility.getBaseHTMLUrl(bindingModel.ViewUrl))
-                    .then(()=>ko.applyBindingsToDescendants(bindingModel.Model, element))        
+                    .then(()=>ko.applyBindingsToDescendants(bindingModel.Model, element))
             }
         }
     }
