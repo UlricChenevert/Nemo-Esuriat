@@ -1,11 +1,11 @@
 import { constructBlogPreviewViewModel, constructHomeViewModel, constructProjectPreviewViewModel } from "../../WebPlugins/Blog/Utility/ConfiguredViewModels.js"; //constructMinecraftProjectsViewModel, constructSpaceEngineersViewModel
-import { PageOption } from "../Contracts/PageOption.js";
+import { PageOption, ResolveURLData } from "../Contracts/PageOption.js";
 import { constructUnknownViewModel } from "./ConfiguredViewModels.js";
 
-export const navigationOptions : PageOption[] = [
+export const navigationOptions : PageOption<void, ResolveURLData<void>>[] = [
         {FriendlyName: "Home", pageKey: "Home", modelConstructor: constructHomeViewModel},
         {FriendlyName: "Blogs", pageKey: "Blogs", modelConstructor: constructBlogPreviewViewModel},
-        {FriendlyName: "Projects", pageKey: "Home", modelConstructor: constructProjectPreviewViewModel},
+        {FriendlyName: "Projects", pageKey: "Projects", modelConstructor: constructProjectPreviewViewModel},
     ]
     
-export const contactNavigationOption : PageOption = {FriendlyName: "Contact", pageKey: "Contact", modelConstructor: constructHomeViewModel}
+export const contactNavigationOption : PageOption<void, ResolveURLData<void>> = {FriendlyName: "Contact", pageKey: "Contact", modelConstructor: constructHomeViewModel}

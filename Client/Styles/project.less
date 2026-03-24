@@ -106,9 +106,22 @@
     flex-direction: row;
 }
 
+.change-flex-direction-to-column {
+    @media (width <= @max-size-before-element-reaction) {
+        flex-direction: column !important;
+    }
+}
+
+.change-flex-direction-to-column-reverse {
+    @media (width <= @max-size-before-element-reaction) {
+        flex-direction: column-reverse !important;
+    }
+}
+
 .title-text {
     font-size: 40px;
     font-weight: bolder;
+    text-align: center;
 }
 
 .emphasized-text {
@@ -158,6 +171,7 @@ body {
     font-size: @body-font-size;
 
     min-height: 100vh;
+    width: 100vw;
 
     display: flex;
     flex-direction: column;

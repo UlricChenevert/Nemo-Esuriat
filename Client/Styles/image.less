@@ -19,12 +19,17 @@
 
 .image-large {
     max-width: 25em;
+    @media (width <= @max-size-before-element-reaction) {.change-image-to-large-viewport-on-iphone()}
     .image-general;
 }
 
 .image-icon {
     aspect-ratio: 1;
     .image-small;
+}
+
+.change-image-to-large-viewport-on-iphone {
+    max-width: 60vw !important;
 }
 
 .article-image {

@@ -21,7 +21,11 @@ if (app.Environment.IsDevelopment())
     {
         FileProvider = new PhysicalFileProvider(
             Path.Combine(builder.Environment.ContentRootPath, "Client", "HTML")),
-        RequestPath = "/HTML" 
+        RequestPath = "/HTML",
+        OnPrepareResponse = ctx =>
+        {
+            ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        }
     });
 }
 

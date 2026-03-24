@@ -1,4 +1,4 @@
-import { PageOption } from "../../../WebCore/Contracts/PageOption.js"
+import { PageOption, ResolveURLData } from "../../../WebCore/Contracts/PageOption.js"
 import { Utility } from "../../../WebCore/Utility.js"
 import { constructUnknownViewModel } from "../../../WebCore/Utility/ConfiguredViewModels.js"
 import { ArticleModel } from "../ViewModels/ArticleModel.js"
@@ -125,11 +125,11 @@ export const constructSpringIDEPresentationViewModel = ()=> {
     ], ["Career"], new Date(2026, 1, 22).toDateString(), "William Chenevert"))
 }
 
-const assemblePageOption = (articleConstructor : ()=>IPartialViewModel<ArticleModel>, Description : string): PageOption => { 
+const assemblePageOption = (articleConstructor : ()=>IPartialViewModel<ArticleModel>, Description : string): PageOption<void, ResolveURLData<void>> => { 
     const temp = articleConstructor().Model
     return {
     FriendlyName: temp.Title, 
-    pageKey: temp.Title,
+    pageKey: temp.Title.split(" ").join("-"),
     Description: Description,
     PictureUrl: temp.pictureURL,
     modelConstructor: articleConstructor
