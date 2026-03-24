@@ -21,6 +21,15 @@ export const constructTasteyBabybackRibsViewModel = ()=>{return Utility.BundleVi
         "Instructions"
     ], ["Recipes"], new Date(2026, 2, 23).toDateString(), "William Chenevert"))}
 
+export const constructEthicsPaperViewModel = ()=>{return Utility.BundleViewAndModel(
+    new ArticleModel("/BlogViews/Papers/EthicsFinalPaper.html", "Word Policing Is Currently Broken", "/Images/Blogs/Security-Redacted-Documents.png", [
+        "Introduction: Word Policing's Current Injustice",
+        "Explication: Establishing the Premise of Word Context and Policing",
+        "Argument: Contextless Word Policing is Unjust; Meaning Molding is the Answer",
+        "Concluding Remarks",
+        "References"
+    ], ["Ethics", "Relationships"], new Date(2025, 11, 17).toDateString(), "William Chenevert", ">30 min"))}
+
 export const constructSpaceEngineersViewModel = ()=>{return Utility.BundleViewAndModel(
     new ArticleModel("/BlogViews/Space Engineers Research.html", "Gravity Drive", "/Images/Blogs/Space Engineers.jpg", [
         "Premise",
@@ -149,6 +158,7 @@ export const constructBlogPreviewViewModel = ()=>{
         assemblePageOption(constructMinecraftProjectsViewModel, "Autonomous Smelting Array Project in Minecraft"),
         assemblePageOption(constructSpaceEngineersViewModel, "Research on Gravity Drives in Space Engineers"),
         assemblePageOption(constructTasteyBabybackRibsViewModel, "Best babyback ribs recipe ever"),
+        assemblePageOption(constructEthicsPaperViewModel, "Word Policing Is Currently Broken"),
         assemblePageOption(constructSpringIDEPresentationViewModel, "An IDE Productivity Presentation for ACM Career"),
         assemblePageOption(constructFallPersonalProjectsViewModel, "A Personal Projects Presentation for ACM Career"),
         assemblePageOption(constructFallBehavioralInterviewsViewModel, "A Behavioral & Technical Interviewing Presentation for ACM Career"),
