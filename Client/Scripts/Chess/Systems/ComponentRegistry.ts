@@ -13,6 +13,8 @@ export class HashMapComponentRegistry<Component> implements IComponentRegistry<C
         return this.ComponentConstructor
     }
 
+    // Map.prototype.forEach tolerates deletion of the currently visited key, so
+    // this satisfies IComponentRegistry.ForEach's mutation contract natively.
     ForEach(callback: (entity: Entity, component: Component) => void): void {
         this.Container.forEach((value: Component, key: Entity)=>callback(key, value));
     }

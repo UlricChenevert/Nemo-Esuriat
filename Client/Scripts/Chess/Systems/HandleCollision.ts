@@ -24,7 +24,7 @@ export function HandleCollision(registry : IRegistry, eventQueue : IEventQueue) 
         if (entitiesInLocation.length == 1) return
 
         entitiesInLocation.forEach(collidedEntity => {
-            if (collidedEntity == collidingEntity) return
+            if (collidedEntity === collidingEntity) return
 
             eventQueue.EnqueueEvent(new GameCollisionEvent(collidingEntity, collidedEntity)) 
         }); 

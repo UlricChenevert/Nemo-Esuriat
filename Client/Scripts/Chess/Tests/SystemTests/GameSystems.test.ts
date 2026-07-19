@@ -18,12 +18,14 @@ import { GameCollisionEvent } from "../../Contracts/GameCollisionEvent.ts";
 import { HandleInputEvents } from "../../Systems/HandleInputEvents.ts";
 import { HandleMovement } from "../../Systems/HandleMovement.ts";
 import { HandleCollision } from "../../Systems/HandleCollision.ts";
+import { OwnedBy } from "../../Contracts/OwnedBy.ts";
+import { EntityHandle } from "../../Contracts/Entity.ts";
 import { Color } from "../../Contracts/Color.ts";
-import { TileSizePixels } from "../../Configuration/DisplayConstants.ts";
+import { TileSizePixels, ChessPieceLayer, BackgroundLayer } from "../../Configuration/DisplayConstants.ts";
 
 function makeRegistry() {
   const r = new GlobalRegistry();
-  for (const C of [Position, Layer, Representation, SelectionState, IsCollidable, IsMoveable, IsSelectable, IsPlayer, IsConscious]) {
+  for (const C of [Position, Layer, Representation, SelectionState, IsCollidable, IsMoveable, IsSelectable, IsPlayer, IsConscious, OwnedBy]) {
     r.RegisterComponentRegistry(C as any, new HashMapComponentRegistry(C as any));
   }
   return r;
@@ -68,30 +70,33 @@ describe("selection + movement", () => {
     r.RegisterEntity(player, IsConscious, new IsConscious());
     r.RegisterEntity(player, IsPlayer, new IsPlayer());
 
-    // a moveable piece at (1,1)
+    // a moveable piece at (1,1), owned by that player
     const piece = r.CreateEntity();
     r.RegisterEntity(piece, Position, new Position(1, 1));
+    r.RegisterEntity(piece, Layer, new Layer(ChessPieceLayer));
     r.RegisterEntity(piece, IsSelectable, new IsSelectable());
     r.RegisterEntity(piece, IsMoveable, new IsMoveable());
+    r.RegisterEntity(piece, OwnedBy, new OwnedBy(player));
 
     // a destination tile at (4,4)
     const tile = r.CreateEntity();
     r.RegisterEntity(tile, Position, new Position(4, 4));
+    r.RegisterEntity(tile, Layer, new Layer(BackgroundLayer));
     r.RegisterEntity(tile, IsSelectable, new IsSelectable());
 
     const canvas = makeCanvas();
 
-    // Click the piece
+    // Click the piece. SelectionState lives on the PLAYER, not the piece.
     eq.EnqueueEvent(clickCell(1, 1, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(piece, SelectionState)).toBeDefined();
+    expect(r.GetComponent(player, SelectionState)?.source).toBe(piece);
 
     // Click the destination
     eq.EnqueueEvent(clickCell(4, 4, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, SelectionState)).toBeDefined();
+    expect(r.GetComponent(player, SelectionState)?.destination).toBe(tile);
 
     // Resolve movement
     HandleMovement(r, eq);
@@ -99,12 +104,11 @@ describe("selection + movement", () => {
     const pos = r.GetComponent(piece, Position)!;
     expect(pos.x).toBe(4);
     expect(pos.y).toBe(4);
-    // selections cleared after the move
-    expect(r.GetComponent(piece, SelectionState)).toBeUndefined();
-    expect(r.GetComponent(tile, SelectionState)).toBeUndefined();
+    // selection cleared after the move
+    expect(r.GetComponent(player, SelectionState)).toBeUndefined();
   });
 
-  it("only the selecting player may deselect", () => {
+  it("does not select a piece the player does not own", () => {
     const r = makeRegistry();
     const eq = new EventQueue(new LinkedList());
 
@@ -112,22 +116,84 @@ describe("selection + movement", () => {
     r.RegisterEntity(player, IsConscious, new IsConscious());
     r.RegisterEntity(player, IsPlayer, new IsPlayer());
 
-    const tile = r.CreateEntity();
-    r.RegisterEntity(tile, Position, new Position(2, 2));
-    r.RegisterEntity(tile, IsSelectable, new IsSelectable());
+    const opponent = r.CreateEntity();
+
+    const enemyPiece = r.CreateEntity();
+    r.RegisterEntity(enemyPiece, Position, new Position(3, 3));
+    r.RegisterEntity(enemyPiece, Layer, new Layer(ChessPieceLayer));
+    r.RegisterEntity(enemyPiece, IsSelectable, new IsSelectable());
+    r.RegisterEntity(enemyPiece, IsMoveable, new IsMoveable());
+    r.RegisterEntity(enemyPiece, OwnedBy, new OwnedBy(opponent));
+
+    eq.EnqueueEvent(clickCell(3, 3, makeCanvas()));
+    HandleInputEvents(r, eq);
+    eq.Clear();
+
+    expect(r.GetComponent(player, SelectionState)).toBeUndefined();
+  });
+
+  it("re-clicking the selected piece deselects it", () => {
+    const r = makeRegistry();
+    const eq = new EventQueue(new LinkedList());
+
+    const player = r.CreateEntity();
+    r.RegisterEntity(player, IsConscious, new IsConscious());
+    r.RegisterEntity(player, IsPlayer, new IsPlayer());
+
+    const piece = r.CreateEntity();
+    r.RegisterEntity(piece, Position, new Position(2, 2));
+    r.RegisterEntity(piece, Layer, new Layer(ChessPieceLayer));
+    r.RegisterEntity(piece, IsSelectable, new IsSelectable());
+    r.RegisterEntity(piece, IsMoveable, new IsMoveable());
+    r.RegisterEntity(piece, OwnedBy, new OwnedBy(player));
 
     const canvas = makeCanvas();
 
     eq.EnqueueEvent(clickCell(2, 2, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, SelectionState)).toBeDefined();
+    expect(r.GetComponent(player, SelectionState)?.source).toBe(piece);
 
-    // clicking again deselects (same player)
+    // clicking the same piece again clears the selection rather than queueing
+    // a degenerate self-move
     eq.EnqueueEvent(clickCell(2, 2, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, SelectionState)).toBeUndefined();
+    expect(r.GetComponent(player, SelectionState)).toBeUndefined();
+  });
+});
+
+describe("entity allocator", () => {
+  it("recycles destroyed slots and invalidates stale handles", () => {
+    const r = makeRegistry();
+
+    const a = r.CreateEntity();
+    r.RegisterEntity(a, Position, new Position(1, 1));
+    expect(r.IsAlive(a)).toBe(true);
+
+    r.DestroyEntity(a);
+    expect(r.IsAlive(a)).toBe(false);
+    expect(r.GetComponent(a, Position)).toBeUndefined(); // components purged
+
+    const b = r.CreateEntity();
+    expect(EntityHandle.Index(b)).toBe(EntityHandle.Index(a)); // slot reused
+    expect(b).not.toBe(a);                                     // but handle differs
+    expect(r.IsAlive(b)).toBe(true);
+    expect(r.IsAlive(a)).toBe(false);                          // stale handle stays dead
+
+    r.DestroyEntity(a);            // idempotent double-free...
+    expect(r.IsAlive(b)).toBe(true); // ...must not free b's slot
+  });
+
+  it("never mints a falsy handle", () => {
+    const r = makeRegistry();
+
+    for (let i = 0; i < 4; i++) {
+      const e = r.CreateEntity();
+      expect(e).toBeTruthy();
+      expect(EntityHandle.Version(e)).toBeGreaterThanOrEqual(1);
+      r.DestroyEntity(e);
+    }
   });
 });
 

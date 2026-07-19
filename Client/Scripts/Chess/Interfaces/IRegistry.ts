@@ -5,8 +5,13 @@ import type { IComponentRegistry } from "./IComponentRegistry.ts";
 
 export interface IRegistry {
     CreateEntity(): Entity;
+
+    /** Purges every component and frees the slot. Idempotent. */
     DestroyEntity(entity: Entity): IRegistry;
-    
+
+    /** True iff `entity` was created and has not been destroyed since. */
+    IsAlive(entity: Entity): boolean;
+
     RegisterEntity<ComponentType>(entity: Entity, componentClass: IClassConstructor<ComponentType>, component : ComponentType): IRegistry
 
     GetComponent<ComponentType>(entity: Entity, componentClass: IClassConstructor<ComponentType>): ComponentType | undefined;

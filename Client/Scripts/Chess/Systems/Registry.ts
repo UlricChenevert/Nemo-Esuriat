@@ -1,4 +1,4 @@
-import { BasicEntity, Entity } from "../Contracts/Entity.ts";
+import { EntityHandle, MaxEntityIndex, MaxEntityVersion, type Entity } from "../Contracts/Entity.ts";
 import type { ComponentInstances } from "../Interfaces/ComponentInstances.ts";
 import type { IClassConstructor } from "../Interfaces/IClassConstructor.ts";
 import type { IComponentRegistry } from "../Interfaces/IComponentRegistry.ts";
@@ -6,22 +6,66 @@ import type { IRegistry } from "../Interfaces/IRegistry.ts";
 
 export class GlobalRegistry implements IRegistry {
     ComponentRegistry : Map<IClassConstructor<unknown>, IComponentRegistry<unknown>>
-    EntityId = 0
+
+    /** _versions[i] is slot i's CURRENT generation. Always >= 1 once allocated. */
+    private _versions : number[] = []
+    /** _alive[i] mirrors whether slot i is presently allocated. */
+    private _alive : boolean[] = []
+    /** Indices of destroyed slots, available for reuse (LIFO). */
+    private _freeIndices : number[] = []
 
     constructor () {this.ComponentRegistry = new Map()}
 
-    
+
     CreateEntity(): Entity {
-        this.EntityId++
-        return new BasicEntity(this.EntityId)
+        const recycledIndex = this._freeIndices.pop()
+
+        if (recycledIndex !== undefined) {
+            this._alive[recycledIndex] = true
+
+            // The version was already bumped at destruction time, so every
+            // handle to this slot's previous occupant is already stale.
+            return EntityHandle.Make(recycledIndex, this._versions[recycledIndex] ?? 1)
+        }
+
+        const newIndex = this._versions.length
+
+        if (newIndex > MaxEntityIndex) {
+            throw new RangeError(`Entity capacity exhausted (${MaxEntityIndex + 1} slots).`)
+        }
+
+        this._versions.push(1)
+        this._alive.push(true)
+
+        return EntityHandle.Make(newIndex, 1)
     }
-    
+
     DestroyEntity(entity: Entity): IRegistry {
+        // Idempotent: double-destroying must not push a duplicate onto the free
+        // list, which would hand the same slot out to two live entities.
+        if (!this.IsAlive(entity)) return this
+
+        const index = EntityHandle.Index(entity)
+
         this.ComponentRegistry.forEach((componentRegistry)=>{componentRegistry.RemoveComponent(entity)})
+
+        // Bump the generation so every outstanding handle to this slot goes
+        // stale. Wrap back to 1, never 0, preserving "no live handle is 0".
+        const nextVersion = (this._versions[index] ?? 1) + 1
+        this._versions[index] = nextVersion > MaxEntityVersion ? 1 : nextVersion
+
+        this._alive[index] = false
+        this._freeIndices.push(index)
 
         return this
     }
-    
+
+    IsAlive(entity: Entity): boolean {
+        const index = EntityHandle.Index(entity)
+
+        return this._alive[index] === true && this._versions[index] === EntityHandle.Version(entity)
+    }
+
     GetComponent<ComponentType>(entity: Entity, componentClass: IClassConstructor<ComponentType>): ComponentType | undefined {
         const componentRegistry = this._getComponentRegistryOrThrow(componentClass)
         

@@ -23,6 +23,7 @@ import { IsSelectable } from "./Contracts/IsSelectible.ts";
 import { IsPlayer } from "./Contracts/IsPlayer.ts";
 import { IsConscious } from "./Contracts/IsConcious.ts";
 import { EntityBuilder } from "./Systems/EntityBuilder.ts";
+import { OwnedBy } from "./Contracts/OwnedBy.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -46,16 +47,10 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
         .RegisterComponentRegistry(IsPlayer, new HashMapComponentRegistry(IsPlayer))
         .RegisterComponentRegistry(IsConscious, new HashMapComponentRegistry(IsConscious))
+        .RegisterComponentRegistry(OwnedBy, new HashMapComponentRegistry(OwnedBy))
     
-    
-    BuildScene(registry)
+    BuildScene(registry, new EntityBuilder(registry).AddIsConsciousness(true).GetEntity(), new EntityBuilder(registry).AddIsConsciousness(false).GetEntity())
 
-    new EntityBuilder(registry)
-        .AddIsConsciousness(true)
-
-    new EntityBuilder(registry)
-        .AddIsConsciousness(false)
-    
     const keyEventListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent))}
     const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement))}
 
