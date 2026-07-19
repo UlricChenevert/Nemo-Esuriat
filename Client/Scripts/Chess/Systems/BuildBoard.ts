@@ -23,6 +23,10 @@ export function BuildPiece(registry : IRegistry, position : Position, model: str
         .AddTags(true, true, true)
 }
 
+export function BuildSide(frontIndex : number, backIndex : number, color : Color) {
+
+}
+
 export function BuildBoard(registry : IRegistry) {
     for (let i = 0; i < GameWidth; i ++) {
         for (let j = 0; j < GameWidth; j ++) {

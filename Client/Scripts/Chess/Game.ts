@@ -16,7 +16,7 @@ import { GlobalRegistry } from "./Systems/Registry.ts";
 import { GameKeyboardEvent } from "./Contracts/KeyBoardEvent.ts";
 import type { IDispose } from "./Interfaces/IDispose.ts";
 import { GameClickEvent } from "./Contracts/GameClickEvent.ts";
-import { IsSelected } from "./Contracts/IsSelected.ts";
+import { SelectionState } from "./Contracts/IsSelected.ts";
 import { IsCollidable } from "./Contracts/IsCollideable.ts";
 import { IsMoveable } from "./Contracts/IsMovable.ts";
 import { IsSelectable } from "./Contracts/IsSelectible.ts";
@@ -40,7 +40,7 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(Position, new HashMapComponentRegistry(Position))
         .RegisterComponentRegistry(Layer, new HashMapComponentRegistry(Layer))
         .RegisterComponentRegistry(Representation, new HashMapComponentRegistry(Representation))
-        .RegisterComponentRegistry(IsSelected, new HashMapComponentRegistry(IsSelected))
+        .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState))
         .RegisterComponentRegistry(IsCollidable, new HashMapComponentRegistry(IsCollidable))
         .RegisterComponentRegistry(IsMoveable, new HashMapComponentRegistry(IsMoveable))
         .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))

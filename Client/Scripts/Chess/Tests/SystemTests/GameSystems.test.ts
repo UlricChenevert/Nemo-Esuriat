@@ -7,7 +7,7 @@ import { LinkedList } from "../../libraries/FastList/FastList.ts";
 import { Position } from "../../Contracts/Position.ts";
 import { Layer } from "../../Contracts/Layer.ts";
 import { Representation } from "../../Contracts/Representation.ts";
-import { IsSelected } from "../../Contracts/IsSelected.ts";
+import { SelectionState } from "../../Contracts/IsSelected.ts";
 import { IsCollidable } from "../../Contracts/IsCollideable.ts";
 import { IsMoveable } from "../../Contracts/IsMovable.ts";
 import { IsSelectable } from "../../Contracts/IsSelectible.ts";
@@ -23,7 +23,7 @@ import { TileSizePixels } from "../../Configuration/DisplayConstants.ts";
 
 function makeRegistry() {
   const r = new GlobalRegistry();
-  for (const C of [Position, Layer, Representation, IsSelected, IsCollidable, IsMoveable, IsSelectable, IsPlayer, IsConscious]) {
+  for (const C of [Position, Layer, Representation, SelectionState, IsCollidable, IsMoveable, IsSelectable, IsPlayer, IsConscious]) {
     r.RegisterComponentRegistry(C as any, new HashMapComponentRegistry(C as any));
   }
   return r;
@@ -85,13 +85,13 @@ describe("selection + movement", () => {
     eq.EnqueueEvent(clickCell(1, 1, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(piece, IsSelected)).toBeDefined();
+    expect(r.GetComponent(piece, SelectionState)).toBeDefined();
 
     // Click the destination
     eq.EnqueueEvent(clickCell(4, 4, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, IsSelected)).toBeDefined();
+    expect(r.GetComponent(tile, SelectionState)).toBeDefined();
 
     // Resolve movement
     HandleMovement(r, eq);
@@ -100,8 +100,8 @@ describe("selection + movement", () => {
     expect(pos.x).toBe(4);
     expect(pos.y).toBe(4);
     // selections cleared after the move
-    expect(r.GetComponent(piece, IsSelected)).toBeUndefined();
-    expect(r.GetComponent(tile, IsSelected)).toBeUndefined();
+    expect(r.GetComponent(piece, SelectionState)).toBeUndefined();
+    expect(r.GetComponent(tile, SelectionState)).toBeUndefined();
   });
 
   it("only the selecting player may deselect", () => {
@@ -121,13 +121,13 @@ describe("selection + movement", () => {
     eq.EnqueueEvent(clickCell(2, 2, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, IsSelected)).toBeDefined();
+    expect(r.GetComponent(tile, SelectionState)).toBeDefined();
 
     // clicking again deselects (same player)
     eq.EnqueueEvent(clickCell(2, 2, canvas));
     HandleInputEvents(r, eq);
     eq.Clear();
-    expect(r.GetComponent(tile, IsSelected)).toBeUndefined();
+    expect(r.GetComponent(tile, SelectionState)).toBeUndefined();
   });
 });
 

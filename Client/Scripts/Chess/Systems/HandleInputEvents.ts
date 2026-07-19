@@ -1,57 +1,63 @@
+import { UndefinedLayer } from "../Configuration/DisplayConstants.ts";
 import { Entity } from "../Contracts/Entity.ts";
 import { GameClickEvent } from "../Contracts/GameClickEvent.ts";
+import { IsMoveable } from "../Contracts/IsMovable.ts";
 import { IsPlayer } from "../Contracts/IsPlayer.ts";
-import { IsSelected } from "../Contracts/IsSelected.ts";
+import { SelectionState } from "../Contracts/IsSelected.ts";
 import { IsSelectable } from "../Contracts/IsSelectible.ts";
+import { Layer } from "../Contracts/Layer.ts";
 import { Position } from "../Contracts/Position.ts";
 import type { IEventQueue } from "../Interfaces/IEventQueue.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { isSamePosition } from "../Utilities/PositionUtilities.ts";
-
-const MaxSelectionsPerPlayer = 2
 
 export function HandleInputEvents(registry : IRegistry, eventQueue : IEventQueue) {
     const clickEvents = eventQueue.GetEventsOfType(GameClickEvent)
 
     if (clickEvents.length == 0) return
 
-    // The acting player. For now there is a single local player; turn ownership
-    // (whose click this is) is not yet modelled — see review note #8.
     let actingPlayer : Entity | undefined
     registry.ForEachEntityWith([IsPlayer], (playerEntity) => { actingPlayer ??= playerEntity })
 
     if (actingPlayer === undefined) return
 
-    // Collect first, mutate after: RegisterEntity/RemoveComponent below structurally
-    // change the registries we would otherwise be iterating (see review note #7).
-    const clickedEntities : Entity[] = []
-    registry.ForEachEntityWith([IsSelectable, Position], (targetEntity, _, position) => {
+    const selectedEntities : Entity[] = []
+    registry.ForEachEntityWith([IsSelectable, Position], (selectedEntity, _, position) => {
         if (clickEvents.some((clickEvent) => isSamePosition(clickEvent.position, position))) {
-            clickedEntities.push(targetEntity)
+            selectedEntities.push(selectedEntity)
         }
     })
 
-    for (const targetEntity of clickedEntities) {
-        ToggleSelectedComponent(targetEntity, actingPlayer, registry)
+    let topEntity : Entity | undefined;
+
+    let maxLayer = UndefinedLayer;
+    
+    for (const targetEntity of selectedEntities) {
+        const currentLayer = registry.GetComponent(targetEntity, Layer)?.layerIndex
+
+        if (currentLayer === undefined) throw new Error(`${targetEntity} layer is not defined! Please check over layer registrations!`)
+            
+        if (currentLayer > maxLayer) {maxLayer = currentLayer; topEntity = targetEntity}
     }
+
+    ToggleSelectedComponent(topEntity!, actingPlayer, registry)
+    
 }
 
 function ToggleSelectedComponent (targetEntity : Entity, player : Entity, registry : IRegistry) {
-    const currentlySelected = registry.GetComponent(targetEntity, IsSelected)
+    console.log("Is in selection toggling!")
+    const currentlySelected = registry.GetComponent(player, SelectionState)
 
-    if (currentlySelected !== undefined) {
-        if (currentlySelected.source !== player) return // Only the owner can deselect
+    const hasSelectedState = currentlySelected !== undefined
+    const hasSelectedDestination = currentlySelected?.destination !== undefined
 
-        registry.RemoveComponent(targetEntity, IsSelected)
-        return
+    if (hasSelectedState && hasSelectedDestination) {
+        registry.RemoveComponent(player, SelectionState)
     }
-
-    let selectedByPlayerCount = 0
-    registry.ForEachEntityWith([IsSelected], (_, isSelected) => {
-        if (isSelected.source === player) selectedByPlayerCount++
-    })
-
-    if (selectedByPlayerCount >= MaxSelectionsPerPlayer) { console.warn("Already selected two!"); return }
-
-    registry.RegisterEntity(targetEntity, IsSelected, new IsSelected(player))
+    else if (hasSelectedState && !hasSelectedDestination) {
+        currentlySelected.destination = targetEntity
+    }
+    else if (!hasSelectedState && !hasSelectedDestination && registry.GetComponent(targetEntity, IsMoveable)) {
+        registry.RegisterEntity(player, SelectionState, new SelectionState(targetEntity))
+    }
 }
