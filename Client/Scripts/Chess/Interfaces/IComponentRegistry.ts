@@ -1,5 +1,5 @@
-import type { Entity } from "../Contracts/Entity";
-import type { IClassConstructor } from "./IClassConstructor";
+import type { Entity } from "../Contracts/Entity.ts";
+import type { IClassConstructor } from "./IClassConstructor.ts";
 
 export interface IComponentRegistry<Component> {
 

@@ -1,5 +1,5 @@
-import { GameWidth } from "../Configuration/GameConstants";
-import type { Position } from "../Contracts/Position";
+import { GameWidth } from "../Configuration/GameConstants.ts";
+import type { Position } from "../Contracts/Position.ts";
 
 export function isNotWithinGameBorder(position : Position) {
     return (position.x < 0 || position.x >= GameWidth || position.y < 0 || position.y >= GameWidth)

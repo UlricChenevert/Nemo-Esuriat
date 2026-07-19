@@ -1,5 +1,5 @@
-import type { IGameEvent } from "../Interfaces/IGameEvent";
-import type { Entity } from "./Entity";
+import type { IGameEvent } from "../Interfaces/IGameEvent.ts";
+import type { Entity } from "./Entity.ts";
 
 export class GameCollisionEvent implements IGameEvent {
     readonly type = "CollisionEvent";

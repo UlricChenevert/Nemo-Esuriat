@@ -1,4 +1,4 @@
-import type { IClassConstructor } from "./IClassConstructor";
+import type { IClassConstructor } from "./IClassConstructor.ts";
 
 // Maps a tuple of component constructors to a tuple of their instance types.
 // e.g. [IClassConstructor<A>, IClassConstructor<B>] -> [A, B]

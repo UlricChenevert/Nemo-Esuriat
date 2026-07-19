@@ -24,7 +24,9 @@
    -->
   <Target Name="CopyClientFilesToWWWRoot" AfterTargets="Build">
     <ItemGroup>
-        <ClientContent Include="Client\**\*.js" />
+        <!-- Chess emits .js in place for its standalone dev loop; the root tsc build is the
+             single source of wwwroot\Scripts\Chess\*.js, so don't copy that dev output over it. -->
+        <ClientContent Include="Client\**\*.js" Exclude="Client\Scripts\Chess\**\*.js" />
         <ClientContent Include="Client\**\*.ttf" />
         <ClientContent Include="Client\**\*.html" />
         <ClientContent Include="Client\**\Images\**\*.*" />

@@ -1,12 +1,11 @@
-import { BackgroundColor, TileSizePixels, UndefinedLayer } from "../Configuration/DisplayConstants";
-import { FontStyle, GameWidth } from "../Configuration/GameConstants";
-import { Color } from "../Contracts/Color";
-import { Layer } from "../Contracts/Layer";
-import { Position } from "../Contracts/Position";
-import { Representation } from "../Contracts/Representation";
-import type { RenderingResources } from "../Contracts/SystemResources";
-import type { IRegistry } from "../Interfaces/IRegistry";
-import { isNotWithinGameBorder } from "../Utilities/PositionUtilities";
+import { BackgroundColor, TileSizePixels, UndefinedLayer } from "../Configuration/DisplayConstants.ts";
+import { GameWidth } from "../Configuration/GameConstants.ts";
+import { Layer } from "../Contracts/Layer.ts";
+import { Position } from "../Contracts/Position.ts";
+import { Representation } from "../Contracts/Representation.ts";
+import type { RenderingResources } from "../Contracts/SystemResources.ts";
+import type { IRegistry } from "../Interfaces/IRegistry.ts";
+import { isNotWithinGameBorder } from "../Utilities/PositionUtilities.ts";
 
 export function RenderCanvas(registry: IRegistry, resources: RenderingResources) {
     // 1. Performance Init: Flattened typed arrays avoid O(N²) layout loops
@@ -22,7 +21,7 @@ export function RenderCanvas(registry: IRegistry, resources: RenderingResources)
     resources.canvasContext.fillRect(0, 0, resources.canvasElement.width, resources.canvasElement.height);
 
     // 2. Process components and resolve layering depth rules
-    registry.ForEachEntityWith([Position, Layer, Representation], (entity, position, layer, representation) => {
+    registry.ForEachEntityWith([Position, Layer, Representation], (_entity, position, layer, representation) => {
         const x = position.x;
         const y = position.y;
 
@@ -59,8 +58,8 @@ export function RenderCanvas(registry: IRegistry, resources: RenderingResources)
         const y = index % GameWidth;
 
         // Map abstract array indexing to concrete Canvas drawing positions
-        const canvasX = x * TileSizePixels + halfCell; // Centered X alignment matching our textAlign
-        const canvasY = y * TileSizePixels;
+        const canvasX = x * TileSizePixels + halfCell; // Centered X alignment matching textAlign:"center"
+        const canvasY = y * TileSizePixels + halfCell; // Centered Y alignment matching textBaseline:"middle"
 
         const rep = data.representation;
         const { red, green, blue, opacity } = rep.color;

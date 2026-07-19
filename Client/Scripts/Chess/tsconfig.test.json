@@ -1,0 +1,13 @@
+{
+  // Typechecks the test suite, which the browser build (tsconfig.json) excludes.
+  // Vitest transpiles the .ts itself, so this never needs to emit.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

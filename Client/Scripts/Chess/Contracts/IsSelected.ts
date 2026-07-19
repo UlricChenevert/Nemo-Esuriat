@@ -1,5 +1,7 @@
-import type { Entity } from "./Entity";
+import type { Entity } from "./Entity.ts";
 
+// Attached directly to the entity that is selected. `source` is the player that
+// made the selection (only that player may deselect it).
 export class IsSelected {
-    constructor(public target : Entity, public source : Entity) {}
+    constructor(public source : Entity) {}
 }

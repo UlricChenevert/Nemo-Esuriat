@@ -1,7 +1,7 @@
-import type { Entity, IndexableEntity } from "../Contracts/Entity";
-import type { ComponentInstances } from "./ComponentInstances";
-import type { IClassConstructor } from "./IClassConstructor";
-import type { IComponentRegistry } from "./IComponentRegistry";
+import type { Entity } from "../Contracts/Entity.ts";
+import type { ComponentInstances } from "./ComponentInstances.ts";
+import type { IClassConstructor } from "./IClassConstructor.ts";
+import type { IComponentRegistry } from "./IComponentRegistry.ts";
 
 export interface IRegistry {
     CreateEntity(): Entity;

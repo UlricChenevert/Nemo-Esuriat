@@ -1,4 +1,4 @@
-import type { IGameEvent } from "../Interfaces/IGameEvent";
+import type { IGameEvent } from "../Interfaces/IGameEvent.ts";
 
 export class GameKeyboardEvent implements IGameEvent {
     readonly type = "KeyboardEvent";

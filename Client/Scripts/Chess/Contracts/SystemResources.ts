@@ -1,4 +1,4 @@
-import { FontStyle } from "../Configuration/GameConstants";
+import { FontStyle } from "../Configuration/GameConstants.ts";
 
 export class Resources {
     constructor(public Rendering : RenderingResources) {}
@@ -11,7 +11,7 @@ export class RenderingResources {
 
         if (temp === undefined || temp === null) throw "Could not get context for canvas!"
         temp.font = FontStyle;
-        temp.textBaseline = "top";
+        temp.textBaseline = "middle";
         temp.textAlign = "center";
 
         // Stop touch gestures (scroll / pinch-zoom / long-press menu) from

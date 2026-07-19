@@ -1,8 +1,8 @@
-import { BasicEntity, Entity } from "../Contracts/Entity";
-import type { ComponentInstances } from "../Interfaces/ComponentInstances";
-import type { IClassConstructor } from "../Interfaces/IClassConstructor";
-import type { IComponentRegistry } from "../Interfaces/IComponentRegistry";
-import type { IRegistry } from "../Interfaces/IRegistry";
+import { BasicEntity, Entity } from "../Contracts/Entity.ts";
+import type { ComponentInstances } from "../Interfaces/ComponentInstances.ts";
+import type { IClassConstructor } from "../Interfaces/IClassConstructor.ts";
+import type { IComponentRegistry } from "../Interfaces/IComponentRegistry.ts";
+import type { IRegistry } from "../Interfaces/IRegistry.ts";
 
 export class GlobalRegistry implements IRegistry {
     ComponentRegistry : Map<IClassConstructor<unknown>, IComponentRegistry<unknown>>
@@ -95,8 +95,8 @@ export class GlobalRegistry implements IRegistry {
     _getComponentRegistryOrThrow<ComponentType>(component : IClassConstructor<ComponentType>) {
         const attempt = this.ComponentRegistry.get(component)
 
-        if (attempt === undefined) throw `Component ${component} is not defined yet! Please define component first before using!`
-        if (attempt.GetComponentType() != component) throw `Component ${component.name} ${component.toString()} is in a weird state where component class is off! Please investigate!`
+        if (attempt === undefined) throw new Error(`Component ${component.name} is not defined yet! Please define component first before using!`)
+        if (attempt.GetComponentType() != component) throw new Error(`Component ${component.name} ${component.toString()} is in a weird state where component class is off! Please investigate!`)
 
         return attempt
     }

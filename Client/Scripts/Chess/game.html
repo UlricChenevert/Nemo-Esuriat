@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess</title>
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #000;
+            display: grid;
+            place-items: center;
+        }
+
+        /* Backing store is 8 tiles * 16px = 128px; scale up for display while the
+           renderer keeps drawing at native resolution (GameClickEvent rescales clicks). */
+        #game {
+            width: min(90vw, 90vh);
+            height: min(90vw, 90vh);
+            image-rendering: pixelated;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- width/height are the backing-store size: GameWidth (8) * TileSizePixels (16). -->
+    <canvas id="game" width="128" height="128" tabindex="0"></canvas>
+
+    <!-- Loads the compiled ESM output of Game.ts. Build the TypeScript first
+         (e.g. `tsc`) so that Game.js exists next to this file. -->
+    <script type="module">
+        import { StartGame } from "./Game.js";
+
+        const canvas = document.getElementById("game");
+        const stop = StartGame(canvas);
+        canvas.focus();
+
+        window.addEventListener("beforeunload", stop);
+    </script>
+</body>
+</html>

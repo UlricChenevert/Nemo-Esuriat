@@ -1,30 +1,37 @@
-import type { Resources } from "./Contracts/SystemResources";
-import type { IEventQueue } from "./Interfaces/IEventQueue";
-import type { IRegistry } from "./Interfaces/IRegistry";
-import { HandleCollision } from "./Systems/HandleCollision";
-import {  HandleInputEvents } from "./Systems/HandleInputEvents";
-import { HandleMovement } from "./Systems/HandleMovement";
-import { RenderCanvas } from "./Systems/RenderCanvas";
-import { HashMapComponentRegistry } from "./Systems/ComponentRegistry";
-import { Layer } from "./Contracts/Layer";
-import { Position } from "./Contracts/Position";
-import { Representation } from "./Contracts/Representation";
-import { LinkedList } from "./libraries/FastList/FastList";
-import { BuildScene } from "./Systems/BuildBoard";
-import { EventQueue } from "./Systems/EventQueue";
-import { GlobalRegistry } from "./Systems/Registry";
-import { GameKeyboardEvent } from "./Contracts/KeyBoardEvent";
-import type { IDispose } from "./Interfaces/IDispose";
-import { GameClickEvent } from "./Contracts/GameClickEvent";
-import { IsSelected } from "./Contracts/IsSelected";
-import { IsCollidable } from "./Contracts/IsCollideable";
-import { IsMoveable } from "./Contracts/IsMovable";
-import { IsSelectable } from "./Contracts/IsSelectible";
-import { IsPlayer } from "./Contracts/IsPlayer";
-import { IsConscious } from "./Contracts/IsConcious";
-import { EntityBuilder } from "./Systems/EntityBuilder";
+import { Resources, RenderingResources } from "./Contracts/SystemResources.ts";
+import type { IEventQueue } from "./Interfaces/IEventQueue.ts";
+import type { IRegistry } from "./Interfaces/IRegistry.ts";
+import { HandleCollision } from "./Systems/HandleCollision.ts";
+import {  HandleInputEvents } from "./Systems/HandleInputEvents.ts";
+import { HandleMovement } from "./Systems/HandleMovement.ts";
+import { RenderCanvas } from "./Systems/RenderCanvas.ts";
+import { HashMapComponentRegistry } from "./Systems/ComponentRegistry.ts";
+import { Layer } from "./Contracts/Layer.ts";
+import { Position } from "./Contracts/Position.ts";
+import { Representation } from "./Contracts/Representation.ts";
+import { LinkedList } from "./libraries/FastList/FastList.ts";
+import { BuildScene } from "./Systems/BuildBoard.ts";
+import { EventQueue } from "./Systems/EventQueue.ts";
+import { GlobalRegistry } from "./Systems/Registry.ts";
+import { GameKeyboardEvent } from "./Contracts/KeyBoardEvent.ts";
+import type { IDispose } from "./Interfaces/IDispose.ts";
+import { GameClickEvent } from "./Contracts/GameClickEvent.ts";
+import { IsSelected } from "./Contracts/IsSelected.ts";
+import { IsCollidable } from "./Contracts/IsCollideable.ts";
+import { IsMoveable } from "./Contracts/IsMovable.ts";
+import { IsSelectable } from "./Contracts/IsSelectible.ts";
+import { IsPlayer } from "./Contracts/IsPlayer.ts";
+import { IsConscious } from "./Contracts/IsConcious.ts";
+import { EntityBuilder } from "./Systems/EntityBuilder.ts";
 
-export function Initialization (resources: Resources) : IDispose[] {
+export interface GameContext {
+    registry : GlobalRegistry
+    eventQueue : EventQueue
+    resources : Resources
+    disposalFunctions : IDispose[]
+}
+
+export function Initialization (resources: Resources) : GameContext {
     const registry = new GlobalRegistry()
     const eventQueue = new EventQueue(new LinkedList())
     const disposalFunctions : IDispose[] = []
@@ -58,19 +65,48 @@ export function Initialization (resources: Resources) : IDispose[] {
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keydown", keyEventListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("pointerdown", clickEventListener))
 
-    return disposalFunctions
+    return { registry, eventQueue, resources, disposalFunctions }
 }
 
 export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resources : Resources) {
     HandleInputEvents(registry, eventQueue)
     HandleMovement(registry, eventQueue) // if there are two selected entities, try moving and check against validation
-    
+
     HandleCollision(registry, eventQueue)
-    
+
     RenderCanvas(registry, Resources.Rendering)
     eventQueue.Clear()
 }
 
 export function Teardown (disposalFunctions : IDispose[]) {
     disposalFunctions.forEach((dispose)=>dispose())
+}
+
+/**
+ * Bootstraps the game onto a canvas and drives it with requestAnimationFrame.
+ * Returns a teardown function that stops the loop and removes all listeners.
+ */
+export function StartGame (canvasElement : HTMLCanvasElement) : IDispose {
+    const resources = new Resources(new RenderingResources(canvasElement))
+    const context = Initialization(resources)
+
+    // The canvas must be focusable to receive keydown events.
+    if (!canvasElement.hasAttribute("tabindex")) canvasElement.tabIndex = 0
+
+    let frameHandle = 0
+    let running = true
+
+    const tick = () => {
+        if (!running) return
+        GameLoop(context.registry, context.eventQueue, context.resources)
+        frameHandle = requestAnimationFrame(tick)
+    }
+
+    frameHandle = requestAnimationFrame(tick)
+
+    return () => {
+        running = false
+        cancelAnimationFrame(frameHandle)
+        Teardown(context.disposalFunctions)
+    }
 }

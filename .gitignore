@@ -2,3 +2,9 @@ bin/**
 obj/**
 node_modules/**
 wwwroot/
+# Chess emits its browser build in place (game.html imports ./Game.js as a sibling).
+# Scoped to Chess: a blanket *.js would swallow hand-written framework scripts.
+Client/Scripts/Chess/**/*.js
+Client/Scripts/Chess/**/*.js.map
+Client/Scripts/Chess/**/*.d.ts
+Client/Scripts/Chess/**/*.d.ts.map

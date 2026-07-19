@@ -27,7 +27,7 @@
 
     /* Modules */
     "module": "es6",                                /* Specify what module code is generated. */
-    // "rootDir": "./",                                  /* Specify the root folder within your source files. */
+    "rootDir": "./Client/Scripts",                  /* Pinned, not inferred: an inferred root would shift if a .ts file is added at the repo root, silently relocating all output. */
     "moduleResolution": "node",                     /* Specify how TypeScript looks up a file from a given module specifier. */
     // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     // "paths": {},                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
@@ -37,7 +37,7 @@
     // "allowUmdGlobalAccess": true,                     /* Allow accessing UMD globals from modules. */
     // "moduleSuffixes": [],                             /* List of file name suffixes to search when resolving a module. */
     // "allowImportingTsExtensions": true,               /* Allow imports to include TypeScript file extensions. Requires '--moduleResolution bundler' and either '--noEmit' or '--emitDeclarationOnly' to be set. */
-    // "rewriteRelativeImportExtensions": true,          /* Rewrite '.ts', '.tsx', '.mts', and '.cts' file extensions in relative import paths to their JavaScript equivalent in output files. */
+    "rewriteRelativeImportExtensions": true,             /* Rewrite '.ts', '.tsx', '.mts', and '.cts' file extensions in relative import paths to their JavaScript equivalent in output files. */
     // "resolvePackageJsonExports": true,                /* Use the package.json 'exports' field when resolving package imports. */
     // "resolvePackageJsonImports": true,                /* Use the package.json 'imports' field when resolving imports. */
     // "customConditions": [],                           /* Conditions to set in addition to the resolver-specific defaults when resolving imports. */
@@ -110,6 +110,8 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  // "exclude": ["Client/Scripts/Unknown/**/*.ts"]
 
+  "include": ["Client/Scripts/**/*"],
+  /* Tests are typechecked by Client/Scripts/Chess/tsconfig.test.json and never ship to wwwroot. */
+  "exclude": ["node_modules", "wwwroot", "bin", "obj", "**/Tests/**"]
 }

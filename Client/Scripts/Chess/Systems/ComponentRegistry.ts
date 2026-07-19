@@ -1,6 +1,6 @@
-import type { IClassConstructor } from "../Interfaces/IClassConstructor";
-import { type IComponentRegistry } from "../Interfaces/IComponentRegistry";
-import type { Entity } from "../Contracts/Entity";
+import type { IClassConstructor } from "../Interfaces/IClassConstructor.ts";
+import { type IComponentRegistry } from "../Interfaces/IComponentRegistry.ts";
+import type { Entity } from "../Contracts/Entity.ts";
 
 export class HashMapComponentRegistry<Component> implements IComponentRegistry<Component> {
     Container : Map<Entity, Component>

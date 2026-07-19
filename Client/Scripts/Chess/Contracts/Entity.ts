@@ -1,5 +1,3 @@
-import type { IEntity } from "../Interfaces/IEntity";
-
 export class Entity {}
 
 export class BasicEntity extends Entity {

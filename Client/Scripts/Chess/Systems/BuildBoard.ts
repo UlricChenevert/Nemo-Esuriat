@@ -1,11 +1,11 @@
-import { SecondaryPieceColor, BackgroundLayer, BoardColorAlternate, BoardColorMain, ChessPieceLayer, KingRepresentationLetter, PrimaryPieceColor } from "../Configuration/DisplayConstants";
-import { GameWidth } from "../Configuration/GameConstants";
-import { Color } from "../Contracts/Color";
-import { Layer } from "../Contracts/Layer";
-import { Position } from "../Contracts/Position";
-import { Representation } from "../Contracts/Representation";
-import type { IRegistry } from "../Interfaces/IRegistry";
-import { EntityBuilder } from "./EntityBuilder";
+import { SecondaryPieceColor, BackgroundLayer, BoardColorAlternate, BoardColorMain, ChessPieceLayer, KingRepresentationLetter, PrimaryPieceColor } from "../Configuration/DisplayConstants.ts";
+import { GameWidth } from "../Configuration/GameConstants.ts";
+import { Color } from "../Contracts/Color.ts";
+import { Layer } from "../Contracts/Layer.ts";
+import { Position } from "../Contracts/Position.ts";
+import { Representation } from "../Contracts/Representation.ts";
+import type { IRegistry } from "../Interfaces/IRegistry.ts";
+import { EntityBuilder } from "./EntityBuilder.ts";
 
 export function BuildScene (registry : IRegistry) {
     
@@ -29,7 +29,7 @@ export function BuildBoard(registry : IRegistry) {
             new EntityBuilder(registry)
                 .AddPosition(new Position(i, j))
                 .AddLayer(new Layer(BackgroundLayer))
-                .AddRepresentation(new Representation(" ", (j % 2 == 0)? BoardColorMain : BoardColorAlternate))
+                .AddRepresentation(new Representation("X", ((i + j) % 2 == 0)? BoardColorMain : BoardColorAlternate))
                 .AddTags(true, false, false)
 
         }
