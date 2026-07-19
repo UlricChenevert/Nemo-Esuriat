@@ -1,0 +1,1 @@
+A minimalist, ASCII or simple 2D tile survival game inspired by RimWorld or The Settlers. You place a campfire, and 3-5 automated workers must gather wood and hunt wild game before winter sets in.
