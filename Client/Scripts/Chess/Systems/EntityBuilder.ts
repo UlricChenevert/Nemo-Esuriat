@@ -3,6 +3,7 @@ import type { Entity } from "../Contracts/Entity.ts";
 import { IsChessPiece } from "../Contracts/IsChessPiece.ts";
 import { IsCollidable } from "../Contracts/IsCollideable.ts";
 import { IsConscious as IsConsciousness } from "../Contracts/IsConcious.ts";
+import { IsCurrentTurn } from "../Contracts/IsCurrentTurn.ts";
 import { IsMoveable } from "../Contracts/IsMovable.ts";
 import { IsPlayer } from "../Contracts/IsPlayer.ts";
 import { IsSelectable } from "../Contracts/IsSelectible.ts";
@@ -45,9 +46,10 @@ export class EntityBuilder {
         return this
     }
 
-    AddIsConsciousness(isPlayer? : boolean) {
+    AddIsConsciousness(isPlayer? : boolean, isStarting? : boolean) {
         this.registry.RegisterEntity(this.entity, IsConsciousness, new IsConsciousness())
         if (isPlayer) this.registry.RegisterEntity(this.entity, IsPlayer, new IsPlayer())
+        if (isStarting) this.registry.RegisterEntity(this.entity, IsCurrentTurn, new IsCurrentTurn())
 
         return this
     }

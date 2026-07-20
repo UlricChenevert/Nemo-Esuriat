@@ -1,6 +1,8 @@
 import { UndefinedLayer } from "../Configuration/DisplayConstants.ts";
+import { HotSeat } from "../Configuration/GameConstants.ts";
 import { EntityHandle, type Entity } from "../Contracts/Entity.ts";
 import { GameClickEvent } from "../Contracts/GameClickEvent.ts";
+import { IsCurrentTurn } from "../Contracts/IsCurrentTurn.ts";
 import { IsMoveable } from "../Contracts/IsMovable.ts";
 import { IsPlayer } from "../Contracts/IsPlayer.ts";
 import { SelectionState } from "../Contracts/IsSelected.ts";
@@ -18,9 +20,10 @@ export function HandleInputEvents(registry : IRegistry, eventQueue : IEventQueue
     if (clickEvents.length == 0) return
 
     let actingPlayer : Entity | undefined
-    registry.ForEachEntityWith([IsPlayer], (playerEntity) => { actingPlayer ??= playerEntity })
+    registry.ForEachEntityWith([IsCurrentTurn], (playerEntity) => { actingPlayer ??= playerEntity })
 
     if (actingPlayer === undefined) return
+    if (!HotSeat && !registry.GetComponent(actingPlayer, IsPlayer)) return
 
     const selectedEntities : Entity[] = []
     registry.ForEachEntityWith([IsSelectable, Position], (selectedEntity, _, position) => {

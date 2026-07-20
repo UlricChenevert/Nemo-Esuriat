@@ -28,6 +28,8 @@ import { HandleChessCollision } from "./Systems/HandleChessCollision.ts";
 import { IsChessPiece } from "./Contracts/IsChessPiece.ts";
 import { Owns } from "./Contracts/Owns.ts";
 import { HandleWinCondition } from "./Systems/HandleWinCondition.ts";
+import { IsCurrentTurn } from "./Contracts/IsCurrentTurn.ts";
+import { HandleTurnSwitching } from "./Systems/HandleTurnSwitching.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -54,8 +56,9 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(OwnedBy, new HashMapComponentRegistry(OwnedBy))
         .RegisterComponentRegistry(IsChessPiece, new HashMapComponentRegistry(IsChessPiece))
         .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
+        .RegisterComponentRegistry(IsCurrentTurn, new HashMapComponentRegistry(IsCurrentTurn))
     
-    BuildScene(registry, new EntityBuilder(registry).AddIsConsciousness(true).GetEntity(), new EntityBuilder(registry).AddIsConsciousness(false).GetEntity())
+    BuildScene(registry, new EntityBuilder(registry).AddIsConsciousness(true, true).GetEntity(), new EntityBuilder(registry).AddIsConsciousness(false).GetEntity())
 
     const keyEventListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent))}
     const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement))}
@@ -76,6 +79,8 @@ export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resour
     HandleCollision(registry, eventQueue)
     HandleChessCollision(registry, eventQueue)
     HandleWinCondition(registry, eventQueue)
+    
+    HandleTurnSwitching(registry, eventQueue)
 
     RenderCanvas(registry, Resources.Rendering)
     eventQueue.Clear()
