@@ -14,8 +14,11 @@ export const BackgroundColor = new Color(0, 0, 0)
 export const PrimaryPieceColor = new Color(237, 33, 0)
 export const SecondaryPieceColor = new Color(32,194,14)
 
+export const TextColor = new Color(255, 255, 255)
+
 export const UndefinedLayer = -1
 export const ChessPieceLayer = 1
 export const BackgroundLayer = 0
+export const TextLayer = 5
 
 export const TileSizePixels = 16;

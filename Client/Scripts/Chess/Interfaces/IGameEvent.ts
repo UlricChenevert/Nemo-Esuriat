@@ -1,4 +1,4 @@
-export const AllEvents = ["KeyboardEvent", "ClickEvent", "CollisionEvent"] as const;
+export const AllEvents = ["KeyboardEvent", "ClickEvent", "CollisionEvent", "MovementEvent", "UnitDestroyed"] as const;
 
 type GameEvent = typeof AllEvents[number]; 
 

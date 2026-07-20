@@ -20,7 +20,7 @@ export function BuildPiece(registry : IRegistry, position : Position, model: str
         .AddPosition(position)
         .AddLayer(new Layer(ChessPieceLayer))
         .AddRepresentation(new Representation(model, color))
-        .AddTags(true, true, true)
+        .AddTags(true, true, true, true)
         .AddOwner(owner)
 }
 
@@ -46,7 +46,7 @@ export function BuildBoard(registry : IRegistry) {
                 .AddPosition(new Position(i, j))
                 .AddLayer(new Layer(BackgroundLayer))
                 .AddRepresentation(new Representation("X", ((i + j) % 2 == 0)? BoardColorMain : BoardColorAlternate))
-                .AddTags(true, false, false)
+                .AddTags(true, false, false, false)
 
         }
     }

@@ -19,14 +19,12 @@ export function HandleCollision(registry : IRegistry, eventQueue : IEventQueue) 
         const flattenedIndex = position.x * GameWidth + position.y;
         const entitiesInLocation = flatBoardOfEntityLocations[flattenedIndex]!
 
+        if (entitiesInLocation.length != 0) {
+            entitiesInLocation.forEach(collidedEntity => {
+                eventQueue.EnqueueEvent(new GameCollisionEvent(collidingEntity, collidedEntity)) 
+            }); 
+        }
+
         entitiesInLocation.push(collidingEntity)
-
-        if (entitiesInLocation.length == 1) return
-
-        entitiesInLocation.forEach(collidedEntity => {
-            if (collidedEntity === collidingEntity) return
-
-            eventQueue.EnqueueEvent(new GameCollisionEvent(collidingEntity, collidedEntity)) 
-        }); 
     })
 }

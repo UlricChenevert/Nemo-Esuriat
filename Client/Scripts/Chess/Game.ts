@@ -24,6 +24,10 @@ import { IsPlayer } from "./Contracts/IsPlayer.ts";
 import { IsConscious } from "./Contracts/IsConcious.ts";
 import { EntityBuilder } from "./Systems/EntityBuilder.ts";
 import { OwnedBy } from "./Contracts/OwnedBy.ts";
+import { HandleChessCollision } from "./Systems/HandleChessCollision.ts";
+import { IsChessPiece } from "./Contracts/IsChessPiece.ts";
+import { Owns } from "./Contracts/Owns.ts";
+import { HandleWinCondition } from "./Systems/HandleWinCondition.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -48,6 +52,8 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(IsPlayer, new HashMapComponentRegistry(IsPlayer))
         .RegisterComponentRegistry(IsConscious, new HashMapComponentRegistry(IsConscious))
         .RegisterComponentRegistry(OwnedBy, new HashMapComponentRegistry(OwnedBy))
+        .RegisterComponentRegistry(IsChessPiece, new HashMapComponentRegistry(IsChessPiece))
+        .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
     
     BuildScene(registry, new EntityBuilder(registry).AddIsConsciousness(true).GetEntity(), new EntityBuilder(registry).AddIsConsciousness(false).GetEntity())
 
@@ -68,6 +74,8 @@ export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resour
     HandleMovement(registry, eventQueue) // if there are two selected entities, try moving and check against validation
 
     HandleCollision(registry, eventQueue)
+    HandleChessCollision(registry, eventQueue)
+    HandleWinCondition(registry, eventQueue)
 
     RenderCanvas(registry, Resources.Rendering)
     eventQueue.Clear()

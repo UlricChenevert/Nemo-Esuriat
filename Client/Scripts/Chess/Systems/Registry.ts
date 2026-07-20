@@ -1,4 +1,5 @@
 import { EntityHandle, MaxEntityIndex, MaxEntityVersion, type Entity } from "../Contracts/Entity.ts";
+import { Owns as DeleteEntityOnDelete } from "../Contracts/Owns.ts";
 import type { ComponentInstances } from "../Interfaces/ComponentInstances.ts";
 import type { IClassConstructor } from "../Interfaces/IClassConstructor.ts";
 import type { IComponentRegistry } from "../Interfaces/IComponentRegistry.ts";
@@ -46,6 +47,11 @@ export class GlobalRegistry implements IRegistry {
         if (!this.IsAlive(entity)) return this
 
         const index = EntityHandle.Index(entity)
+
+        const entityToDelete = this._getComponentRegistryOrThrow(DeleteEntityOnDelete).GetComponent(entity)
+        if (entityToDelete) {
+            this.DestroyEntity(entityToDelete.entity)
+        }
 
         this.ComponentRegistry.forEach((componentRegistry)=>{componentRegistry.RemoveComponent(entity)})
 
@@ -142,7 +148,7 @@ export class GlobalRegistry implements IRegistry {
         if (attempt === undefined) throw new Error(`Component ${component.name} is not defined yet! Please define component first before using!`)
         if (attempt.GetComponentType() != component) throw new Error(`Component ${component.name} ${component.toString()} is in a weird state where component class is off! Please investigate!`)
 
-        return attempt
+        return attempt as IComponentRegistry<ComponentType>
     }
     
 }

@@ -21,6 +21,8 @@ export class EventQueue implements IEventQueue {
     }
 
     Clear(): void {
+        this.Events.forEach((event)=>console.log(event))
+
         this.Events = this.nextQueue
         this.nextQueue = new LinkedList()
     }
