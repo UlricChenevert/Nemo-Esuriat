@@ -1,9 +1,14 @@
 import { Observable } from "../../../Framework/Knockout/knockout"
 import { PageOption, ResolveURLData } from "../../../WebCore/Contracts/PageOption"
 
+// When true, the page tree is being rebuilt to match an already-changed URL
+// (e.g. a back/forward navigation), so we must not push new history entries.
+let reloadMode = false
+export const SetReloadMode = (value : boolean) => { reloadMode = value }
+
 export const UpdateHistoryAndPage = async <ResolveType = void>(
-    currentPage : Observable<IPartialViewModel<IHTMLInjectable<ResolveType, ResolveURLData<ResolveType>>>>, 
-    urlData : ResolveURLData<ResolveType>,  
+    currentPage : Observable<IPartialViewModel<IHTMLInjectable<ResolveType, ResolveURLData<ResolveType>>>>,
+    urlData : ResolveURLData<ResolveType>,
     selectedOption? : PageOption<ResolveType, ResolveURLData<ResolveType>>
 ) => {
     if (selectedOption === undefined) throw "Invalid url state!"
@@ -13,7 +18,8 @@ export const UpdateHistoryAndPage = async <ResolveType = void>(
 
     const newURL = oldURL as String + `/${selectedOption.pageKey}`
 
-    history.pushState(newURL, newURL, newURL)
+    if (reloadMode) history.replaceState(newURL, newURL, newURL)
+    else history.pushState(newURL, newURL, newURL)
 
     const pageViewModel = selectedOption.modelConstructor()
     currentPage(pageViewModel)

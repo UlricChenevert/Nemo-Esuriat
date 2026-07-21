@@ -42,6 +42,7 @@ import { PromotionOption } from "./Contracts/PromotionOption.ts";
 import { HandlePromotionChoice } from "./Systems/HandlePromotionChoice.ts";
 import { MoveHint } from "./Contracts/MoveHint.ts";
 import { HandleMoveHints } from "./Systems/HandleMoveHints.ts";
+import { HandleAiTurn } from "./Systems/HandleAiTurn.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -94,6 +95,7 @@ export function Initialization (resources: Resources) : GameContext {
 
 export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resources : Resources) {
     HandleInputEvents(registry, eventQueue)
+    HandleAiTurn(registry, eventQueue) // stages the computer's move as a selection, if it is its turn
     HandleMovement(registry, eventQueue) // if there are two selected entities, try moving and check against validation
     HandleSpecialMoves(registry, eventQueue) // castling rook relocation, en passant capture, promotion
     HandlePromotionChoice(registry, eventQueue) // offers the picker, and applies what it answers

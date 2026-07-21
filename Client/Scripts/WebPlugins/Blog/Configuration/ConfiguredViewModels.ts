@@ -1,6 +1,6 @@
 import { PageOption, ResolveURLData } from "../../../WebCore/Contracts/PageOption.js"
 import { Utility } from "../../../WebCore/Utility.js"
-import { constructUnknownViewModel } from "../../../WebCore/Utility/ConfiguredViewModels.js"
+import { constructUnknownViewModel, constructChessViewModel } from "../../../WebCore/Utility/ConfiguredViewModels.js"
 import { ArticleModel } from "../ViewModels/ArticleModel.js"
 import { BlogPreviewer } from "../ViewModels/BlogPreviewer.js"
 
@@ -182,7 +182,14 @@ export const constructProjectPreviewViewModel = ()=>{
             modelConstructor: constructUnknownViewModel
         },
         {
-            FriendlyName: "Heartbreaker Character Generator", 
+            FriendlyName: "Chess",
+            pageKey: "Chess",
+            Description: "A from-scratch chess engine built on a custom entity-component-system, with move validation, special moves, promotion, and an AI opponent",
+            PictureUrl: "/Images/Blogs/Chess-thumbnail.jpg",
+            modelConstructor: constructChessViewModel
+        },
+        {
+            FriendlyName: "Heartbreaker Character Generator",
             pageKey: "Heartbreaker Character Generator",
             Description: "A character generator I built for a D&D-like homebrew",
             PictureUrl: "/Images/Blogs/PF 300dpi 3inW MEN ARMIGER MERCENARY Horse Alexander Wilke.jpg",
