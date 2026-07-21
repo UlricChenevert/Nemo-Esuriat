@@ -4,14 +4,17 @@ import { IsChessPiece } from "../Contracts/IsChessPiece.ts";
 import { IsCollidable } from "../Contracts/IsCollideable.ts";
 import { IsConscious as IsConsciousness } from "../Contracts/IsConcious.ts";
 import { IsCurrentTurn } from "../Contracts/IsCurrentTurn.ts";
+import { IsGoingDown } from "../Contracts/IsGoingDown.ts";
 import { IsMoveable } from "../Contracts/IsMovable.ts";
 import { IsPlayer } from "../Contracts/IsPlayer.ts";
 import { IsSelectable } from "../Contracts/IsSelectible.ts";
 import { Layer } from "../Contracts/Layer.ts";
+import { MovementRules } from "../Contracts/MovementRules.ts";
 import { OwnedBy } from "../Contracts/OwnedBy.ts";
 import { Owns } from "../Contracts/Owns.ts";
 import { Position } from "../Contracts/Position.ts";
 import { Representation } from "../Contracts/Representation.ts";
+import type { IGenerateValidMoves } from "../Interfaces/IGenerateValidMoves.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 
 export class EntityBuilder {
@@ -28,7 +31,10 @@ export class EntityBuilder {
     }
 
     AddRepresentation(representation : Representation) {
-        this.registry.RegisterEntity(this.entity, Representation, representation)
+        // Callers hand in shared palette constants (PrimaryPieceColor and friends) and
+        // selection highlighting mutates color in place, so every entity needs its own
+        // instance — otherwise selecting one piece recolors its whole side, permanently.
+        this.registry.RegisterEntity(this.entity, Representation, new Representation(representation.model, representation.color.Copy()))
         return this
     }
 
@@ -82,6 +88,13 @@ export class EntityBuilder {
                 .AddLayer(new Layer(TextLayer))
         }
 
+        return this
+    }
+
+    AddMovementRules(generateValidMoves : IGenerateValidMoves, isGoingDown : boolean) {
+        this.registry.RegisterEntity(this.entity, MovementRules, new MovementRules(generateValidMoves))
+        if (isGoingDown) this.registry.RegisterEntity(this.entity, IsGoingDown, new IsGoingDown())
+        
         return this
     }
 }

@@ -6,4 +6,7 @@ export class Color {
         .map(x => clamp(x).toString(16).padStart(2, '0'))
         .join('');
     }
+    Copy() {
+        return new Color(this.red, this.green, this.blue, this.opacity)
+    }
 }

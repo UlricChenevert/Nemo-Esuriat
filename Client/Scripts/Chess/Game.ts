@@ -30,6 +30,18 @@ import { Owns } from "./Contracts/Owns.ts";
 import { HandleWinCondition } from "./Systems/HandleWinCondition.ts";
 import { IsCurrentTurn } from "./Contracts/IsCurrentTurn.ts";
 import { HandleTurnSwitching } from "./Systems/HandleTurnSwitching.ts";
+import { MovementRules } from "./Contracts/MovementRules.ts";
+import { IsGoingDown } from "./Contracts/IsGoingDown.ts";
+import { HasMoved } from "./Contracts/HasMoved.ts";
+import { JustDoubleStepped } from "./Contracts/JustDoubleStepped.ts";
+import { GameOver } from "./Contracts/GameOver.ts";
+import { HandleSpecialMoves } from "./Systems/HandleSpecialMoves.ts";
+import { HandleColorChanges } from "./Systems/HandleColorChanges.ts";
+import { PendingPromotion } from "./Contracts/PendingPromotion.ts";
+import { PromotionOption } from "./Contracts/PromotionOption.ts";
+import { HandlePromotionChoice } from "./Systems/HandlePromotionChoice.ts";
+import { MoveHint } from "./Contracts/MoveHint.ts";
+import { HandleMoveHints } from "./Systems/HandleMoveHints.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -57,6 +69,14 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(IsChessPiece, new HashMapComponentRegistry(IsChessPiece))
         .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
         .RegisterComponentRegistry(IsCurrentTurn, new HashMapComponentRegistry(IsCurrentTurn))
+        .RegisterComponentRegistry(MovementRules, new HashMapComponentRegistry(MovementRules))
+        .RegisterComponentRegistry(IsGoingDown, new HashMapComponentRegistry(IsGoingDown))
+        .RegisterComponentRegistry(HasMoved, new HashMapComponentRegistry(HasMoved))
+        .RegisterComponentRegistry(JustDoubleStepped, new HashMapComponentRegistry(JustDoubleStepped))
+        .RegisterComponentRegistry(GameOver, new HashMapComponentRegistry(GameOver))
+        .RegisterComponentRegistry(PendingPromotion, new HashMapComponentRegistry(PendingPromotion))
+        .RegisterComponentRegistry(PromotionOption, new HashMapComponentRegistry(PromotionOption))
+        .RegisterComponentRegistry(MoveHint, new HashMapComponentRegistry(MoveHint))
     
     BuildScene(registry, new EntityBuilder(registry).AddIsConsciousness(true, true).GetEntity(), new EntityBuilder(registry).AddIsConsciousness(false).GetEntity())
 
@@ -75,12 +95,18 @@ export function Initialization (resources: Resources) : GameContext {
 export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resources : Resources) {
     HandleInputEvents(registry, eventQueue)
     HandleMovement(registry, eventQueue) // if there are two selected entities, try moving and check against validation
+    HandleSpecialMoves(registry, eventQueue) // castling rook relocation, en passant capture, promotion
+    HandlePromotionChoice(registry, eventQueue) // offers the picker, and applies what it answers
 
     HandleCollision(registry, eventQueue)
     HandleChessCollision(registry, eventQueue)
-    HandleWinCondition(registry, eventQueue)
-    
+    HandleColorChanges(registry, eventQueue)
+    HandleMoveHints(registry, eventQueue) // marks the selected piece's legal squares, clears them on release
+
+    // Win detection asks whether the side to move has a reply, so the turn has to have
+    // switched first — otherwise it interrogates the player who just moved.
     HandleTurnSwitching(registry, eventQueue)
+    HandleWinCondition(registry, eventQueue)
 
     RenderCanvas(registry, Resources.Rendering)
     eventQueue.Clear()
