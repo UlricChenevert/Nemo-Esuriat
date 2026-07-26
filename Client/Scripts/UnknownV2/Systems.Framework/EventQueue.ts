@@ -1,7 +1,7 @@
 import type { IClassConstructor } from "../Interfaces/IClassConstructor.ts";
 import { type IEventQueue } from "../Interfaces/IEventQueue.ts";
 import type { IGameEvent } from "../Interfaces/IGameEvent.ts";
-import { LinkedList } from "../libraries/FastList/FastList.ts";
+import { LinkedList } from "../Libraries/FastList/FastList.ts";
 
 export class EventQueue implements IEventQueue {
     nextQueue = new LinkedList<IGameEvent>()

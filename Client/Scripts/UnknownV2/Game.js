@@ -1,6 +1,8 @@
-import { CharacterRepresentation, GameColors, PlayerLayer } from "./Configuration/DisplayConstants.js";
-import { Color } from "./Contracts/Components/Color.js";
+import { CharacterRepresentation, GameColors, PlayerLayer, TileSizePixels } from "./Configuration/DisplayConstants.js";
+import { GameWidth } from "./Configuration/GameConstants.js";
+import { ChunkCoordinate } from "./Contracts/Components/ChunkCoordinate.js";
 import { IsSelectable } from "./Contracts/Components/IsSelectible.js";
+import { MultiTileRepresentation } from "./Contracts/Components/MultiTileRepresentation.js";
 import { Layer } from "./Contracts/Components/Layer.js";
 import { Position } from "./Contracts/Components/Position.js";
 import { Representation } from "./Contracts/Components/Representation.js";
@@ -21,6 +23,9 @@ import { EventQueue } from "./Systems.Framework/EventQueue.js";
 import { GlobalRegistry } from "./Systems.Framework/Registry.js";
 import { HandleInputEvents } from "./Systems.Gameloop/HandleInputEvents.js";
 import { RenderCanvas } from "./Systems.Gameloop/RenderCanvas.js";
+import { CreateWorldStreamingResources } from "./Systems.World/CreateWorldStreamingResources.js";
+import { StreamChunks } from "./Systems.World/StreamChunks.js";
+import { UpdateCamera } from "./Systems.World/UpdateCamera.js";
 export function Initialization(resources) {
     const registry = new GlobalRegistry();
     const eventQueue = new EventQueue(new LinkedList());
@@ -34,10 +39,9 @@ export function Initialization(resources) {
         .RegisterComponentRegistry(IsPlayer, new HashMapComponentRegistry(IsPlayer))
         .RegisterComponentRegistry(DecidesMovement, new HashMapComponentRegistry(DecidesMovement))
         .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
-        .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState));
-    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
-    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
-    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+        .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState))
+        .RegisterComponentRegistry(MultiTileRepresentation, new HashMapComponentRegistry(MultiTileRepresentation))
+        .RegisterComponentRegistry(ChunkCoordinate, new HashMapComponentRegistry(ChunkCoordinate));
     const keyEventListener = (keyEvent) => { eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent)); };
     const clickEventListener = (event) => { eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement)); };
     resources.Rendering.canvasElement.addEventListener("keydown", keyEventListener);
@@ -59,6 +63,12 @@ export function GameLoop(registry, eventQueue, Resources) {
     HandleInputEvents(registry, eventQueue);
     HandleMovement(registry, eventQueue);
     HandleCollision(registry, eventQueue);
+    // Both react to the position movement just wrote, and both must run before
+    // rendering: streaming first so the chunk the player just entered exists,
+    // then the camera so it points at where the player actually is. Rendering
+    // ahead of either would show a gap for one frame.
+    StreamChunks(registry, Resources.World);
+    UpdateCamera(registry, Resources.Rendering.Camera);
     RenderCanvas(registry, Resources.Rendering);
     eventQueue.Clear();
 }
@@ -70,7 +80,7 @@ export function Teardown(disposalFunctions) {
  * Returns a teardown function that stops the loop and removes all listeners.
  */
 export function StartGame(canvasElement) {
-    const resources = new Resources(new RenderingResources(canvasElement));
+    const resources = new Resources(new RenderingResources(canvasElement), CreateWorldStreamingResources());
     const context = Initialization(resources);
     // The canvas must be focusable to receive keydown events.
     if (!canvasElement.hasAttribute("tabindex"))
@@ -95,8 +105,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (gameContainer === null)
         throw new Error("Could not find game html element!");
     const canvas = document.createElement("canvas");
-    canvas.width = gameContainer.clientWidth;
-    canvas.height = gameContainer.clientHeight;
+    // The backing store is the game's native resolution, not the container's
+    // size. CSS scales the result up for display, and GameClickEvent scales
+    // clicks back down. Sizing from the container would tie the number of
+    // drawable pixels to the layout -- and #GameContainer has no height of its
+    // own, so clientHeight is 0 and nothing could be drawn at all.
+    canvas.width = GameWidth * TileSizePixels;
+    canvas.height = GameWidth * TileSizePixels;
     canvas.id = "game";
     canvas.tabIndex = 0;
     gameContainer.append(canvas);

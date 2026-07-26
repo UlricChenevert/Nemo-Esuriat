@@ -6,7 +6,7 @@ import { OwnedBy } from "../Contracts/Components/OwnedBy.ts";
 import { Position } from "../Contracts/Components/Position.ts";
 import { SelectionState } from "../Contracts/Components/SelectionState.ts";
 import { GameClickEvent } from "../Contracts/Events/GameClickEvent.ts";
-import { SelectionUpdateEvent } from "../Contracts/Events/SelectionUpdate.ts";
+import { SelectionUpdateEvent } from "../Contracts/Events/SelectionUpdateEvent.ts";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.ts";
 import { IsPlayer } from "../Contracts/Tags/IsPlayer.ts";
 import type { IEventQueue } from "../Interfaces/IEventQueue.ts";

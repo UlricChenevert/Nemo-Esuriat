@@ -1,5 +1,5 @@
 import {} from "../Interfaces/IEventQueue.js";
-import { LinkedList } from "../libraries/FastList/FastList.js";
+import { LinkedList } from "../Libraries/FastList/FastList.js";
 export class EventQueue {
     Events;
     nextQueue = new LinkedList();

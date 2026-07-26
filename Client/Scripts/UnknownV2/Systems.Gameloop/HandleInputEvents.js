@@ -6,7 +6,7 @@ import { OwnedBy } from "../Contracts/Components/OwnedBy.js";
 import { Position } from "../Contracts/Components/Position.js";
 import { SelectionState } from "../Contracts/Components/SelectionState.js";
 import { GameClickEvent } from "../Contracts/Events/GameClickEvent.js";
-import { SelectionUpdateEvent } from "../Contracts/Events/SelectionUpdate.js";
+import { SelectionUpdateEvent } from "../Contracts/Events/SelectionUpdateEvent.js";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.js";
 import { IsPlayer } from "../Contracts/Tags/IsPlayer.js";
 import { isSamePosition } from "../Utilities/PositionUtilities.js";

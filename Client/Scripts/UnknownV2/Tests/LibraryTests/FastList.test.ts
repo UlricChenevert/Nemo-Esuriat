@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LinkedList } from "../../libraries/FastList/FastList.ts";
+import { LinkedList } from "../../Libraries/FastList/FastList.ts";
 
 describe("construction", () => {
   it("from(array)", () => expect([...LinkedList.from([3, 1, 2])]).toEqual([3, 1, 2]));

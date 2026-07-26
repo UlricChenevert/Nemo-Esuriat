@@ -4,8 +4,19 @@
     background: #000;
 }
 
-/* Backing store is 8 tiles * 16px = 128px; scale up for display while the
-    renderer keeps drawing at native resolution (GameClickEvent rescales clicks). */
+/* Fills the viewport and centres the canvas. Without a height the container
+    collapses to 0, which is fine for the canvas' own CSS size but leaves it
+    overflowing an empty box rather than sitting in the middle of the page. */
+#GameContainer {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Backing store is GameWidth tiles * TileSizePixels = 1600px square, set in
+    Game.ts; this scales it up for display while the renderer keeps drawing at
+    native resolution (GameClickEvent rescales clicks back down). */
 #game {
     width: min(90vw, 90vh);
     height: min(90vw, 90vh);

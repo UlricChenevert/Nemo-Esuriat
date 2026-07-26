@@ -1,1 +1,0 @@
-{"version":3,"file":"SelectionUpdate.js","sourceRoot":"","sources":["SelectionUpdate.ts"],"names":[],"mappings":"AAGA,MAAM,OAAO,oBAAoB;IAGT;IAAuC;IAFlD,IAAI,GAAG,iBAAiB,CAAC;IAElC,YAAoB,qBAA8B,EAAS,YAAsB;QAA7D,0BAAqB,GAArB,qBAAqB,CAAS;QAAS,iBAAY,GAAZ,YAAY,CAAU;IAAG,CAAC;CACxF"}
