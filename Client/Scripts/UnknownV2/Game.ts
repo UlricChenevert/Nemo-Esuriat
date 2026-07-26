@@ -1,6 +1,10 @@
+import { CharacterRepresentation, GameColors, PlayerLayer } from "./Configuration/DisplayConstants.ts";
+import { Color } from "./Contracts/Components/Color.ts";
+import { IsSelectable } from "./Contracts/Components/IsSelectible.ts";
 import { Layer } from "./Contracts/Components/Layer.ts";
 import { Position } from "./Contracts/Components/Position.ts";
 import { Representation } from "./Contracts/Components/Representation.ts";
+import { SelectionState } from "./Contracts/Components/SelectionState.ts";
 import { GameClickEvent } from "./Contracts/Events/GameClickEvent.ts";
 import { GameKeyboardEvent } from "./Contracts/Events/KeyBoardEvent.ts";
 import { RenderingResources, Resources } from "./Contracts/SystemResources.ts";
@@ -11,10 +15,11 @@ import { IsPlayer } from "./Contracts/Tags/IsPlayer.ts";
 import type { IDispose } from "./Interfaces/IDispose.ts";
 import type { IEventQueue } from "./Interfaces/IEventQueue.ts";
 import type { IRegistry } from "./Interfaces/IRegistry.ts";
-import { LinkedList } from "./libraries/FastList/FastList.ts";
+import { LinkedList } from "./Libraries/FastList/FastList.ts";
 import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.ts";
 import { HandleMovement } from "./Systems.EventHandlers/HandleMovement.ts";
 import { HashMapComponentRegistry } from "./Systems.Framework/ComponentRegistry.ts";
+import { EntityBuilder } from "./Systems.Framework/EntityBuilder.ts";
 import { EventQueue } from "./Systems.Framework/EventQueue.ts";
 import { GlobalRegistry } from "./Systems.Framework/Registry.ts";
 import { HandleInputEvents } from "./Systems.Gameloop/HandleInputEvents.ts";
@@ -40,12 +45,29 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(IsMoveable, new HashMapComponentRegistry(IsMoveable))
         .RegisterComponentRegistry(IsPlayer, new HashMapComponentRegistry(IsPlayer))
         .RegisterComponentRegistry(DecidesMovement, new HashMapComponentRegistry(DecidesMovement))
+        .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+        .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState))
+        // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+        // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+        // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
     
     const keyEventListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent))}
     const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement))}
 
     resources.Rendering.canvasElement.addEventListener("keydown", keyEventListener)
     resources.Rendering.canvasElement.addEventListener("pointerdown", clickEventListener)
+
+    new EntityBuilder(registry)
+        .AddPosition(new Position(50, 50))
+        .AddRepresentation(new Representation(CharacterRepresentation.Character, GameColors.Player))
+        .AddTags(true, true, true, true, true)
+        .AddLayer(new Layer(PlayerLayer))
+
+    new EntityBuilder(registry)
+        .AddPosition(new Position(10, 0))
+        .AddRepresentation(new Representation(CharacterRepresentation.NPC, GameColors.NPC))
+        .AddLayer(new Layer(PlayerLayer))
+
 
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keydown", keyEventListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("pointerdown", clickEventListener))

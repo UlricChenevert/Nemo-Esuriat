@@ -1,12 +1,15 @@
 import { TextColor, TextLayer } from "../Configuration/DisplayConstants.ts";
 import type { Entity } from "../Contracts/Components/Entity.ts";
+import { IsSelectable } from "../Contracts/Components/IsSelectible.ts";
 import { Layer } from "../Contracts/Components/Layer.ts";
 import { OwnedBy } from "../Contracts/Components/OwnedBy.ts";
 import { Owns } from "../Contracts/Components/Owns.ts";
 import { Position } from "../Contracts/Components/Position.ts";
 import { Representation } from "../Contracts/Components/Representation.ts";
+import { DecidesMovement } from "../Contracts/Tags/DecidesMovement.ts";
 import { IsCollidable } from "../Contracts/Tags/IsCollideable.ts";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.ts";
+import type { IsPlayer } from "../Contracts/Tags/IsPlayer.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 
 export class EntityBuilder {
@@ -32,9 +35,11 @@ export class EntityBuilder {
         return this
     }
 
-    AddTags(isSelectable : boolean, isCollidable : boolean, isMoveable : boolean, isChessPiece : boolean) {
+    AddTags(isSelectable : boolean, isCollidable : boolean, isMoveable : boolean, isPlayer : IsPlayer, decidesMovement : DecidesMovement) {
+        if (isSelectable) this.registry.RegisterEntity(this.entity, IsSelectable, new IsSelectable)
         if (isCollidable) this.registry.RegisterEntity(this.entity, IsCollidable, new IsCollidable())
         if (isMoveable) this.registry.RegisterEntity(this.entity, IsMoveable, new IsMoveable())
+        if (decidesMovement) this.registry.RegisterEntity(this.entity, DecidesMovement, new DecidesMovement())
 
         return this
     }

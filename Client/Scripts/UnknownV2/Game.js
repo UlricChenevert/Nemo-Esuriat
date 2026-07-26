@@ -1,6 +1,10 @@
+import { CharacterRepresentation, GameColors, PlayerLayer } from "./Configuration/DisplayConstants.js";
+import { Color } from "./Contracts/Components/Color.js";
+import { IsSelectable } from "./Contracts/Components/IsSelectible.js";
 import { Layer } from "./Contracts/Components/Layer.js";
 import { Position } from "./Contracts/Components/Position.js";
 import { Representation } from "./Contracts/Components/Representation.js";
+import { SelectionState } from "./Contracts/Components/SelectionState.js";
 import { GameClickEvent } from "./Contracts/Events/GameClickEvent.js";
 import { GameKeyboardEvent } from "./Contracts/Events/KeyBoardEvent.js";
 import { RenderingResources, Resources } from "./Contracts/SystemResources.js";
@@ -8,10 +12,11 @@ import { DecidesMovement } from "./Contracts/Tags/DecidesMovement.js";
 import { IsCollidable } from "./Contracts/Tags/IsCollideable.js";
 import { IsMoveable } from "./Contracts/Tags/IsMovable.js";
 import { IsPlayer } from "./Contracts/Tags/IsPlayer.js";
-import { LinkedList } from "./libraries/FastList/FastList.js";
+import { LinkedList } from "./Libraries/FastList/FastList.js";
 import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.js";
 import { HandleMovement } from "./Systems.EventHandlers/HandleMovement.js";
 import { HashMapComponentRegistry } from "./Systems.Framework/ComponentRegistry.js";
+import { EntityBuilder } from "./Systems.Framework/EntityBuilder.js";
 import { EventQueue } from "./Systems.Framework/EventQueue.js";
 import { GlobalRegistry } from "./Systems.Framework/Registry.js";
 import { HandleInputEvents } from "./Systems.Gameloop/HandleInputEvents.js";
@@ -27,11 +32,25 @@ export function Initialization(resources) {
         .RegisterComponentRegistry(IsCollidable, new HashMapComponentRegistry(IsCollidable))
         .RegisterComponentRegistry(IsMoveable, new HashMapComponentRegistry(IsMoveable))
         .RegisterComponentRegistry(IsPlayer, new HashMapComponentRegistry(IsPlayer))
-        .RegisterComponentRegistry(DecidesMovement, new HashMapComponentRegistry(DecidesMovement));
+        .RegisterComponentRegistry(DecidesMovement, new HashMapComponentRegistry(DecidesMovement))
+        .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+        .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState));
+    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
+    // .RegisterComponentRegistry(IsSelectable, new HashMapComponentRegistry(IsSelectable))
     const keyEventListener = (keyEvent) => { eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent)); };
     const clickEventListener = (event) => { eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement)); };
     resources.Rendering.canvasElement.addEventListener("keydown", keyEventListener);
     resources.Rendering.canvasElement.addEventListener("pointerdown", clickEventListener);
+    new EntityBuilder(registry)
+        .AddPosition(new Position(50, 50))
+        .AddRepresentation(new Representation(CharacterRepresentation.Character, GameColors.Player))
+        .AddTags(true, true, true, true, true)
+        .AddLayer(new Layer(PlayerLayer));
+    new EntityBuilder(registry)
+        .AddPosition(new Position(10, 0))
+        .AddRepresentation(new Representation(CharacterRepresentation.NPC, GameColors.NPC))
+        .AddLayer(new Layer(PlayerLayer));
     disposalFunctions.push(() => resources.Rendering.canvasElement.removeEventListener("keydown", keyEventListener));
     disposalFunctions.push(() => resources.Rendering.canvasElement.removeEventListener("pointerdown", clickEventListener));
     return { registry, eventQueue, resources, disposalFunctions };
