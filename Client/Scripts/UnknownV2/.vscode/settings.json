@@ -1,0 +1,16 @@
+{
+    "cSpell.words": [
+        "Collidable"
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/*.d.ts" : true,
+        "**/*.js" : true,
+        "**/*.js.map" : true,
+        "**/*.d.ts.map" : true,
+    }
+}

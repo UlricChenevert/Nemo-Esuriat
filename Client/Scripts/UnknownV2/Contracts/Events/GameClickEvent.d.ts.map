@@ -1,0 +1,1 @@
+{"version":3,"file":"GameClickEvent.d.ts","sourceRoot":"","sources":["GameClickEvent.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,gCAAgC,CAAC;AACjE,OAAO,EAAE,QAAQ,EAAE,MAAM,2BAA2B,CAAC;AAErD,qBAAa,cAAe,YAAW,UAAU;IAC7C,QAAQ,CAAC,IAAI,gBAAgB;IAE7B,QAAQ,EAAG,QAAQ,CAAA;gBAEP,YAAY,EAAG,UAAU,EAAE,aAAa,EAAG,iBAAiB;CAgB3E"}

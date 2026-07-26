@@ -1,0 +1,1 @@
+{"version":3,"file":"SystemResources.d.ts","sourceRoot":"","sources":["SystemResources.ts"],"names":[],"mappings":"AAEA,qBAAa,SAAS;IACC,SAAS,EAAG,kBAAkB;gBAA9B,SAAS,EAAG,kBAAkB;CACpD;AAED,qBAAa,kBAAkB;IAER,aAAa,EAAG,iBAAiB;IADpD,aAAa,EAAG,wBAAwB,CAAA;gBACrB,aAAa,EAAG,iBAAiB;CAcvD"}

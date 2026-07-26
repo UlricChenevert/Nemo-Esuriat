@@ -1,0 +1,14 @@
+ html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+}
+
+/* Backing store is 8 tiles * 16px = 128px; scale up for display while the
+    renderer keeps drawing at native resolution (GameClickEvent rescales clicks). */
+#game {
+    width: min(90vw, 90vh);
+    height: min(90vw, 90vh);
+    image-rendering: pixelated;
+    outline: none;
+}

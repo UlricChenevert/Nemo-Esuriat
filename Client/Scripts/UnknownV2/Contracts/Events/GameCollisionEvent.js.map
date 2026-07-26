@@ -1,0 +1,1 @@
+{"version":3,"file":"GameCollisionEvent.js","sourceRoot":"","sources":["GameCollisionEvent.ts"],"names":[],"mappings":"AAGA,MAAM,OAAO,kBAAkB;IAER;IAAiC;IAD3C,IAAI,GAAG,gBAAgB,CAAC;IACjC,YAAmB,eAAwB,EAAS,cAAuB;QAAxD,oBAAe,GAAf,eAAe,CAAS;QAAS,mBAAc,GAAd,cAAc,CAAS;IAAG,CAAC;CAClF"}
