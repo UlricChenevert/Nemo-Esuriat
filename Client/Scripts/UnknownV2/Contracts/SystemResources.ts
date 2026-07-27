@@ -2,13 +2,15 @@ import { FontStyle, MaxTickSeconds } from "../Configuration/GameConstants.ts";
 import type { MultiTileRepresentation } from "./Components/MultiTileRepresentation.ts";
 import type { IKeyValueStore } from "../Interfaces/IKeyValueStore.ts";
 import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
+import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
 
 export class Resources {
     constructor(
         public Rendering : RenderingResources,
         public World : WorldStreamingResources,
         public Time = new TimeResources(),
-        public Input = new InputResources()
+        public Input = new InputResources(),
+        public Random = new LinearCongruentialGenerator(Date.now())
     ) {}
 }
 

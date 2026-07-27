@@ -21,8 +21,15 @@ export declare class EntityBuilder {
     AddChunkCoordinate(chunkCoordinate: ChunkCoordinate): this;
     AddMovement(speed: number): this;
     AddTags(isSelectable: boolean, isCollidable: boolean, isPlayer: boolean, movementFlag?: boolean): this;
+    /**
+     * Its own method rather than a fifth flag on AddTags: the boolean list there
+     * is already hard to read at the call site, and unlike those, this one says
+     * what the entity *is* rather than which systems may touch it.
+     */
+    AddHuman(): this;
     AddOwner(owner: Entity): this;
     GetEntity(): Entity;
     AddText(text: string, position: Position): this;
+    MakeHerd(position: Position, amount: number, representationString: string): void;
 }
 //# sourceMappingURL=EntityBuilder.d.ts.map

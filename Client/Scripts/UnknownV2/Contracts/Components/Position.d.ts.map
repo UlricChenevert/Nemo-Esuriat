@@ -1,1 +1,1 @@
-{"version":3,"file":"Position.d.ts","sourceRoot":"","sources":["Position.ts"],"names":[],"mappings":"AAAA,qBAAa,QAAQ;IACE,CAAC,EAAG,MAAM;IAAS,CAAC,EAAG,MAAM;gBAA7B,CAAC,EAAG,MAAM,EAAS,CAAC,EAAG,MAAM;CACnD"}
+{"version":3,"file":"Position.d.ts","sourceRoot":"","sources":["Position.ts"],"names":[],"mappings":"AAAA,qBAAa,QAAQ;IACE,CAAC,EAAG,MAAM;IAAS,CAAC,EAAG,MAAM;gBAA7B,CAAC,EAAG,MAAM,EAAS,CAAC,EAAG,MAAM;IAChD,IAAI;CAGP"}

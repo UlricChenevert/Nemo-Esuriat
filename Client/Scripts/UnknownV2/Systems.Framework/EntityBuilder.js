@@ -1,4 +1,4 @@
-import { TextColor, TextLayer } from "../Configuration/DisplayConstants.js";
+import { AnimalLayer, GameColors, TextColor, TextLayer } from "../Configuration/DisplayConstants.js";
 import { ChunkCoordinate } from "../Contracts/Components/ChunkCoordinate.js";
 import { IsSelectable } from "../Contracts/Components/IsSelectible.js";
 import { MultiTileRepresentation } from "../Contracts/Components/MultiTileRepresentation.js";
@@ -7,11 +7,14 @@ import { OwnedBy } from "../Contracts/Components/OwnedBy.js";
 import { Owns } from "../Contracts/Components/Owns.js";
 import { Position } from "../Contracts/Components/Position.js";
 import { Representation } from "../Contracts/Components/Representation.js";
-import { DecidesMovement } from "../Contracts/Tags/DecidesMovement.js";
 import { IsCollidable } from "../Contracts/Tags/IsCollideable.js";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.js";
 import { IsPlayer } from "../Contracts/Tags/IsPlayer.js";
+import { Human } from "../Contracts/Tags/Human.js";
 import { MovementFlag } from "../Contracts/Tags/MovementFlag.js";
+import { HerdOwner } from "../Contracts/Components/HerdOwner.js";
+import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.js";
+import { AnimalSpeed } from "../Configuration/GameConstants.js";
 export class EntityBuilder {
     registry;
     entity;
@@ -60,9 +63,26 @@ export class EntityBuilder {
             this.registry.RegisterEntity(this.entity, MovementFlag, new MovementFlag());
         return this;
     }
+    /**
+     * Its own method rather than a fifth flag on AddTags: the boolean list there
+     * is already hard to read at the call site, and unlike those, this one says
+     * what the entity *is* rather than which systems may touch it.
+     */
+    AddHuman() {
+        this.registry.RegisterEntity(this.entity, Human, new Human());
+        return this;
+    }
     AddOwner(owner) {
         this.registry.RegisterEntity(this.entity, OwnedBy, new OwnedBy(owner));
-        this.registry.RegisterEntity(owner, Owns, new Owns(this.entity));
+        // Append to the owner's existing Owns rather than replacing it, otherwise
+        // each new child would evict its predecessor and orphan it.
+        const existingOwns = this.registry.GetComponent(owner, Owns);
+        if (existingOwns) {
+            existingOwns.Add(this.entity);
+        }
+        else {
+            this.registry.RegisterEntity(owner, Owns, new Owns(this.entity));
+        }
         return this;
     }
     GetEntity() {
@@ -86,6 +106,25 @@ export class EntityBuilder {
                 .AddLayer(new Layer(TextLayer));
         }
         return this;
+    }
+    MakeHerd(position, amount, representationString) {
+        const herd = new HerdOwner();
+        this.registry.RegisterEntity(this.entity, HerdOwner, herd);
+        const random = new LinearCongruentialGenerator(Date.now());
+        for (let i = 0; i < amount; i++) {
+            const distance = random.Random();
+            const direction = random.Random() * 2 * Math.PI;
+            const xDelta = Math.cos(direction) * distance;
+            const yDelta = Math.sin(direction) * distance;
+            const newPostion = new Position(position.x + xDelta, position.y + yDelta);
+            new EntityBuilder(this.registry)
+                .AddPosition(newPostion)
+                .AddRepresentation(new Representation(representationString, GameColors.Animal))
+                .AddLayer(new Layer(AnimalLayer))
+                .AddMovement(AnimalSpeed)
+                .AddOwner(this.entity)
+                .GetEntity();
+        }
     }
 }
 //# sourceMappingURL=EntityBuilder.js.map

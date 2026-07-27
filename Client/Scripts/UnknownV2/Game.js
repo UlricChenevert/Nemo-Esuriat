@@ -32,6 +32,9 @@ import { MovementFlag } from "./Contracts/Tags/MovementFlag.js";
 import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.js";
 import { TargetLocation } from "./Contracts/Components/TargetLocation.js";
 import { HandleMovement } from "./Systems.Gameloop/HandleMovement.js";
+import { HerdOwner } from "./Contracts/Components/HerdOwner.js";
+import { HandleAIMovement } from "./Systems.Gameloop/HandleAIMovement.js";
+import { Human } from "./Contracts/Tags/Human.js";
 export function Initialization(resources) {
     const registry = new GlobalRegistry();
     const eventQueue = new EventQueue(new LinkedList());
@@ -51,7 +54,9 @@ export function Initialization(resources) {
         .RegisterComponentRegistry(OwnedBy, new HashMapComponentRegistry(OwnedBy))
         .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
         .RegisterComponentRegistry(MovementFlag, new HashMapComponentRegistry(MovementFlag))
-        .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation));
+        .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation))
+        .RegisterComponentRegistry(HerdOwner, new HashMapComponentRegistry(HerdOwner))
+        .RegisterComponentRegistry(Human, new HashMapComponentRegistry(Human));
     const keyDownListener = (keyEvent) => { eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, true)); };
     const keyUpListener = (keyEvent) => { eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, false)); };
     const clickEventListener = (event) => { eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement, resources.Rendering.Camera)); };
@@ -73,6 +78,7 @@ export function Initialization(resources) {
         .AddTags(true, true, false)
         .AddLayer(new Layer(PlayerLayer))
         .AddMovement(HumanSpeed)
+        .AddHuman()
         .AddOwner(player);
     new EntityBuilder(registry)
         .AddPosition(new Position(40, 40))
@@ -80,6 +86,8 @@ export function Initialization(resources) {
         .AddMovement(AnimalSpeed)
         .AddTags(false, true, false)
         .AddLayer(new Layer(PlayerLayer));
+    new EntityBuilder(registry)
+        .MakeHerd(new Position(70, 70), 15, CharacterRepresentation.Animal);
     disposalFunctions.push(() => resources.Rendering.canvasElement.removeEventListener("keydown", keyDownListener));
     disposalFunctions.push(() => resources.Rendering.canvasElement.removeEventListener("keyup", keyUpListener));
     disposalFunctions.push(() => resources.Rendering.canvasElement.removeEventListener("blur", blurListener));
@@ -94,6 +102,7 @@ export function GameLoop(registry, eventQueue, Resources) {
     PanCamera(eventQueue, Resources.Input, Resources.Rendering.Camera, Resources.Time);
     HandleMovement(registry, eventQueue, Resources.Time);
     EnqueueCollision(registry, eventQueue);
+    HandleAIMovement(registry);
     // After the pan, and before rendering: streaming reacts to where the camera
     // now points, so the chunks it just scrolled onto exist by the time they are
     // drawn. Running it ahead of PanCamera would show a blank strip for a frame.

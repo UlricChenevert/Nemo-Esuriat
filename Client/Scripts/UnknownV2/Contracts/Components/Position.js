@@ -5,5 +5,8 @@ export class Position {
         this.x = x;
         this.y = y;
     }
+    Copy() {
+        return new Position(this.x, this.y);
+    }
 }
 //# sourceMappingURL=Position.js.map

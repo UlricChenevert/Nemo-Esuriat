@@ -1,14 +1,17 @@
 import { FontStyle, MaxTickSeconds } from "../Configuration/GameConstants.js";
+import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.js";
 export class Resources {
     Rendering;
     World;
     Time;
     Input;
-    constructor(Rendering, World, Time = new TimeResources(), Input = new InputResources()) {
+    Random;
+    constructor(Rendering, World, Time = new TimeResources(), Input = new InputResources(), Random = new LinearCongruentialGenerator(Date.now())) {
         this.Rendering = Rendering;
         this.World = World;
         this.Time = Time;
         this.Input = Input;
+        this.Random = Random;
     }
 }
 /** Input state that outlives a single event, as opposed to the events themselves. */

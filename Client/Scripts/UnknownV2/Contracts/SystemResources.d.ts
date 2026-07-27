@@ -1,12 +1,14 @@
 import type { MultiTileRepresentation } from "./Components/MultiTileRepresentation.ts";
 import type { IKeyValueStore } from "../Interfaces/IKeyValueStore.ts";
 import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
+import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
 export declare class Resources {
     Rendering: RenderingResources;
     World: WorldStreamingResources;
     Time: TimeResources;
     Input: InputResources;
-    constructor(Rendering: RenderingResources, World: WorldStreamingResources, Time?: TimeResources, Input?: InputResources);
+    Random: LinearCongruentialGenerator;
+    constructor(Rendering: RenderingResources, World: WorldStreamingResources, Time?: TimeResources, Input?: InputResources, Random?: LinearCongruentialGenerator);
 }
 /** Input state that outlives a single event, as opposed to the events themselves. */
 export declare class InputResources {

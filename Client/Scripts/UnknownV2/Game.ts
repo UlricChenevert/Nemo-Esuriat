@@ -35,6 +35,9 @@ import { MovementFlag } from "./Contracts/Tags/MovementFlag.ts";
 import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.ts";
 import { TargetLocation } from "./Contracts/Components/TargetLocation.ts";
 import { HandleMovement } from "./Systems.Gameloop/HandleMovement.ts";
+import { HerdOwner } from "./Contracts/Components/HerdOwner.ts";
+import { HandleAIMovement } from "./Systems.Gameloop/HandleAIMovement.ts";
+import { Human } from "./Contracts/Tags/Human.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -64,6 +67,8 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
         .RegisterComponentRegistry(MovementFlag, new HashMapComponentRegistry(MovementFlag))
         .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation))
+        .RegisterComponentRegistry(HerdOwner, new HashMapComponentRegistry(HerdOwner))
+        .RegisterComponentRegistry(Human, new HashMapComponentRegistry(Human))
     
     const keyDownListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, true))}
     const keyUpListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, false))}
@@ -90,6 +95,7 @@ export function Initialization (resources: Resources) : GameContext {
         .AddTags(true, true, false)
         .AddLayer(new Layer(PlayerLayer))
         .AddMovement(HumanSpeed)
+        .AddHuman()
         .AddOwner(player)
 
     new EntityBuilder(registry)
@@ -99,6 +105,8 @@ export function Initialization (resources: Resources) : GameContext {
         .AddTags(false, true, false)
         .AddLayer(new Layer(PlayerLayer))
 
+    new EntityBuilder(registry)
+        .MakeHerd(new Position(70, 70), 15, CharacterRepresentation.Animal)
 
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keydown", keyDownListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keyup", keyUpListener))
@@ -117,6 +125,7 @@ export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resour
     PanCamera(eventQueue, Resources.Input, Resources.Rendering.Camera, Resources.Time)
     HandleMovement(registry, eventQueue, Resources.Time)
     EnqueueCollision(registry, eventQueue)
+    HandleAIMovement(registry)
 
     // After the pan, and before rendering: streaming reacts to where the camera
     // now points, so the chunks it just scrolled onto exist by the time they are

@@ -31,9 +31,14 @@ export class GlobalRegistry {
         if (!this.IsAlive(entity))
             return this;
         const index = EntityHandle.Index(entity);
-        const entityToDelete = this._getComponentRegistryOrThrow(Owns).GetComponent(entity);
-        if (entityToDelete) {
-            this.DestroyEntity(entityToDelete.entity);
+        // Cascade to every owned entity. Copy the list first: the recursive calls
+        // mutate the component registries underneath us, and a child that was
+        // already destroyed is filtered out by the IsAlive guard above.
+        const owned = this._getComponentRegistryOrThrow(Owns).GetComponent(entity);
+        if (owned) {
+            for (const ownedEntity of [...owned.entities]) {
+                this.DestroyEntity(ownedEntity);
+            }
         }
         this.ComponentRegistry.forEach((componentRegistry) => { componentRegistry.RemoveComponent(entity); });
         // Bump the generation so every outstanding handle to this slot goes

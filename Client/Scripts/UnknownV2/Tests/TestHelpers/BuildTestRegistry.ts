@@ -1,4 +1,6 @@
 import { ChunkCoordinate } from "../../Contracts/Components/ChunkCoordinate.ts";
+import { HerdOwner } from "../../Contracts/Components/HerdOwner.ts";
+import { Human } from "../../Contracts/Tags/Human.ts";
 import { Layer } from "../../Contracts/Components/Layer.ts";
 import { MultiTileRepresentation } from "../../Contracts/Components/MultiTileRepresentation.ts";
 import { OwnedBy } from "../../Contracts/Components/OwnedBy.ts";
@@ -41,9 +43,13 @@ export function BuildTestRegistry() : GlobalRegistry {
         .RegisterComponentRegistry(DecidesMovement, new HashMapComponentRegistry(DecidesMovement))
         .RegisterComponentRegistry(MovementFlag, new HashMapComponentRegistry(MovementFlag))
         .RegisterComponentRegistry(IsMoveable, new HashMapComponentRegistry(IsMoveable))
+        .RegisterComponentRegistry(Human, new HashMapComponentRegistry(Human))
         // What the input and movement systems read and write.
         .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState))
-        .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation)) as GlobalRegistry
+        .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation))
+        // EntityBuilder.MakeHerd writes this, so it is reachable from any test
+        // that builds a herd, not only from the AI movement tests.
+        .RegisterComponentRegistry(HerdOwner, new HashMapComponentRegistry(HerdOwner)) as GlobalRegistry
 }
 
 /** Adds a player entity at the given world position. */
