@@ -112,7 +112,7 @@ export class EntityBuilder {
         this.registry.RegisterEntity(this.entity, HerdOwner, herd);
         const random = new LinearCongruentialGenerator(Date.now());
         for (let i = 0; i < amount; i++) {
-            const distance = random.Random();
+            const distance = random.Random() * herd.WanderRadius;
             const direction = random.Random() * 2 * Math.PI;
             const xDelta = Math.cos(direction) * distance;
             const yDelta = Math.sin(direction) * distance;
