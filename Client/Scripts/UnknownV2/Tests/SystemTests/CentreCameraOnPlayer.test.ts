@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { UpdateCamera } from "../../Systems.World/UpdateCamera.ts";
+import { CentreCameraOnPlayer } from "../../Systems.World/CentreCameraOnPlayer.ts";
 import { Camera } from "../../Contracts/SystemResources.ts";
 import { GameWidth } from "../../Configuration/GameConstants.ts";
 import { Position } from "../../Contracts/Components/Position.ts";
@@ -13,7 +13,7 @@ describe("following the player", () => {
     const camera = new Camera();
     AddPlayerAt(registry, 500, 500);
 
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
 
     expect(camera.worldOriginX).toBe(500 - HalfViewport);
   });
@@ -23,7 +23,7 @@ describe("following the player", () => {
     const camera = new Camera();
     AddPlayerAt(registry, 500, 300);
 
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
 
     expect(camera.worldOriginY).toBe(300 - HalfViewport);
   });
@@ -33,7 +33,7 @@ describe("following the player", () => {
     const camera = new Camera();
     AddPlayerAt(registry, -400, -700);
 
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
 
     expect([camera.worldOriginX, camera.worldOriginY]).toEqual([-400 - HalfViewport, -700 - HalfViewport]);
   });
@@ -43,9 +43,9 @@ describe("following the player", () => {
     const camera = new Camera();
     const player = AddPlayerAt(registry, 0, 0);
 
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
     registry.RegisterEntity(player, Position, new Position(10, 10));
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
 
     expect(camera.worldOriginX).toBe(10 - HalfViewport);
   });
@@ -55,21 +55,21 @@ describe("following the player", () => {
     const camera = new Camera();
     AddPlayerAt(registry, 137, -42);
 
-    UpdateCamera(registry, camera);
+    CentreCameraOnPlayer(registry, camera);
 
     expect([137 - camera.worldOriginX, -42 - camera.worldOriginY]).toEqual([HalfViewport, HalfViewport]);
   });
 });
 
 describe("without a player", () => {
-  it("does not throw", () => expect(() => UpdateCamera(BuildTestRegistry(), new Camera())).not.toThrow());
+  it("does not throw", () => expect(() => CentreCameraOnPlayer(BuildTestRegistry(), new Camera())).not.toThrow());
 
   it("leaves the camera where it was", () => {
     // Holding position matters: snapping to the origin would jerk the view on
     // any frame between the player being destroyed and replaced.
     const camera = new Camera(80, 90);
 
-    UpdateCamera(BuildTestRegistry(), camera);
+    CentreCameraOnPlayer(BuildTestRegistry(), camera);
 
     expect([camera.worldOriginX, camera.worldOriginY]).toEqual([80, 90]);
   });

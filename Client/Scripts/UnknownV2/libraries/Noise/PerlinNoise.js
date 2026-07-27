@@ -25,24 +25,35 @@ export class PerlinNoise {
     _octaves;
     _persistence;
     _lacunarity;
+    _gain;
     constructor(randomNumberGenerator, configuration) {
         this._gradientGridWidth = configuration.GradientGridWidth;
         this._noiseScale = configuration.NoiseScale;
         this._octaves = configuration.Octaves;
         this._persistence = configuration.Persistence;
         this._lacunarity = configuration.Lacunarity;
+        this._gain = configuration.Gain;
         if (this._gradientGridWidth < 1)
             throw new RangeError("GradientGridWidth must be at least 1.");
         if (this._noiseScale <= 0)
             throw new RangeError("NoiseScale must be greater than 0.");
         if (this._octaves < 1)
             throw new RangeError("Octaves must be at least 1.");
+        if (this._gain <= 0)
+            throw new RangeError("Gain must be greater than 0.");
         // Built eagerly, so identical configuration and seed always produce an
         // identical grid regardless of which coordinates get sampled first.
         this._gradientComponents = new Float32Array(this._gradientGridWidth * this._gradientGridWidth * 2);
-        for (let component = 0; component < this._gradientComponents.length; component++) {
-            // Random() is [0, 1); this maps it onto [-1, 1).
-            this._gradientComponents[component] = randomNumberGenerator.Random() * 2 - 1;
+        const cellCount = this._gradientGridWidth * this._gradientGridWidth;
+        for (let cell = 0; cell < cellCount; cell++) {
+            // Perlin's gradients have to be unit length. Drawing x and y as two
+            // independent values on [-1, 1) instead leaves a mean magnitude of
+            // about 0.54, which halves the amplitude of the entire field before
+            // any octave work happens; an angle keeps every gradient on the unit
+            // circle while still costing one draw per cell.
+            const angle = randomNumberGenerator.Random() * 2 * Math.PI;
+            this._gradientComponents[cell * 2] = Math.cos(angle);
+            this._gradientComponents[cell * 2 + 1] = Math.sin(angle);
         }
     }
     GetNoise(worldX, worldY) {
@@ -58,8 +69,11 @@ export class PerlinNoise {
         }
         // Dividing by the summed amplitude before the remap keeps the result in
         // [0, 1] for any octave count. Without it, more octaves push the range
-        // wider and every terrain threshold shifts meaning.
-        const normalized = (total / amplitudeSum + 1) / 2;
+        // wider and every terrain threshold shifts meaning. That same division
+        // is what narrows the field toward the middle, so Gain widens it again
+        // before the remap rather than after, where the clamp would already have
+        // discarded the tails.
+        const normalized = (total / amplitudeSum * this._gain + 1) / 2;
         // Perlin's theoretical bound is slightly wider than the range it reaches
         // in practice, so clamp rather than let a rare sample escape [0, 1].
         return Math.min(1, Math.max(0, normalized));

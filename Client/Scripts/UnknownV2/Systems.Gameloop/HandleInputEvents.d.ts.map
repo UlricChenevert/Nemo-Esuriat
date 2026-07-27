@@ -1,1 +1,1 @@
-{"version":3,"file":"HandleInputEvents.d.ts","sourceRoot":"","sources":["HandleInputEvents.ts"],"names":[],"mappings":"AAWA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,8BAA8B,CAAC;AAChE,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,4BAA4B,CAAC;AAI5D,wBAAgB,iBAAiB,CAAC,QAAQ,EAAG,SAAS,EAAE,UAAU,EAAG,WAAW,QA0B/E"}
+{"version":3,"file":"HandleInputEvents.d.ts","sourceRoot":"","sources":["HandleInputEvents.ts"],"names":[],"mappings":"AAaA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,8BAA8B,CAAC;AAChE,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,4BAA4B,CAAC;AAK5D,wBAAgB,iBAAiB,CAAC,QAAQ,EAAG,SAAS,EAAE,UAAU,EAAG,WAAW,QA0B/E"}

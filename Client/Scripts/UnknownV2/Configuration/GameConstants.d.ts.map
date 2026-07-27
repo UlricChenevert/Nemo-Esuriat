@@ -1,1 +1,1 @@
-{"version":3,"file":"GameConstants.d.ts","sourceRoot":"","sources":["GameConstants.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,SAAS,MAAM,CAAA;AAC5B,eAAO,MAAM,SAAS,mBAAmB,CAAA"}
+{"version":3,"file":"GameConstants.d.ts","sourceRoot":"","sources":["GameConstants.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,SAAS,MAAM,CAAA;AAC5B,eAAO,MAAM,SAAS,mBAAmB,CAAA;AAEzC,gFAAgF;AAChF,eAAO,MAAM,UAAU,IAAI,CAAA;AAE3B,eAAO,MAAM,WAAW,IAAI,CAAA;AAE5B,yEAAyE;AACzE,eAAO,MAAM,cAAc,KAAK,CAAA;AAEhC;;;;;;;GAOG;AACH,eAAO,MAAM,cAAc,MAAM,CAAA"}

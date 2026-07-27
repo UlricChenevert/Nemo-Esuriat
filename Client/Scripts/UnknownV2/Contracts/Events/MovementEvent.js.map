@@ -1,1 +1,1 @@
-{"version":3,"file":"MovementEvent.js","sourceRoot":"","sources":["MovementEvent.ts"],"names":[],"mappings":"AAIA,MAAM,OAAO,iBAAiB;IAGN;IAAmC;IAA8B;IAA+B;IAF3G,IAAI,GAAG,eAAe,CAAA;IAE/B,YAAoB,iBAA0B,EAAS,YAAqB,EAAS,WAAsB,EAAS,WAAsB;QAAtH,sBAAiB,GAAjB,iBAAiB,CAAS;QAAS,iBAAY,GAAZ,YAAY,CAAS;QAAS,gBAAW,GAAX,WAAW,CAAW;QAAS,gBAAW,GAAX,WAAW,CAAW;IAAG,CAAC;CAEjJ"}
+{"version":3,"file":"MovementEvent.js","sourceRoot":"","sources":["MovementEvent.ts"],"names":[],"mappings":"AAAA,oEAAoE;AACpE,2DAA2D;AAC3D,6DAA6D;;AAE7D,yDAAyD;AACzD,sCAAsC;AAEtC,qJAAqJ;AAErJ,IAAI"}

@@ -14,7 +14,7 @@ import type { IRandomNumberGenerator } from "../../Interfaces/IRandomNumberGener
  *
  * The default multiplier/increment pair is from Numerical Recipes and has full
  * period, so the generator visits all 2^32 states before repeating. That matters
- * here: the Perlin gradient grid consumes 2 * width^2 draws up front, and a
+ * here: the Perlin gradient grid consumes width^2 draws up front, and a
  * generator that cycles partway through would fill the far side of the grid with
  * a copy of the near side, producing terrain that visibly repeats.
  */

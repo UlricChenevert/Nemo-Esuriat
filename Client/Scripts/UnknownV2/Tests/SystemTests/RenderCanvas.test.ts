@@ -205,6 +205,74 @@ describe("layer resolution across both paths", () => {
   });
 });
 
+// PanCamera moves the camera by a fraction of a tile per frame, so the origin is
+// almost never whole. It used to be subtracted raw, which made the multi-tile
+// loop bounds fractional, which made paletteIndices[rowOffset + localX] a
+// fractional index into a Uint8Array: undefined, swallowed by a ?? 0, so every
+// tile of the chunk drew as palette[0]. On screen that read as terrain that
+// never loaded, and only for chunks above or left of the camera.
+describe("a camera between tiles", () => {
+  const MixedPalette = [new Representation(".", GameColors.Water), new Representation("^", GameColors.Mountain)] as const;
+
+  /** A block whose tiles alternate between the two palette entries. */
+  const AddMixedBlock = (registry : GlobalRegistry, worldX : number, worldY : number, size : number) => {
+    const indices = new Uint8Array(size * size);
+    for (let i = 0; i < indices.length; i++) indices[i] = i % 2;
+
+    return new EntityBuilder(registry)
+      .AddPosition(new Position(worldX, worldY))
+      .AddLayer(new Layer(BackgroundLayer))
+      .AddMultiTileRepresentation(new MultiTileRepresentation(size, size, indices, MixedPalette))
+      .GetEntity();
+  };
+
+  it("draws a block above it with its real glyphs, not a flat fill", () => {
+    const registry = BuildTestRegistry();
+    const { resources, drawnGlyphs } = CreateRecordingRenderingResources();
+    // Fractional, and positive, so the block above sits at a negative screen
+    // origin -- the case that produced the fractional loop bounds.
+    resources.Camera.worldOriginY = 10.37;
+    // Tall enough to still reach the screen from up there.
+    AddMixedBlock(registry, 0, 0, 30);
+
+    RenderCanvas(registry, resources);
+
+    expect(new Set(drawnGlyphs.map((glyph) => glyph.model))).toEqual(new Set([".", "^"]));
+  });
+
+  it("draws the same cells as it would from the whole tile below", () => {
+    const registry = BuildTestRegistry();
+    const whole = CreateRecordingRenderingResources();
+    const fractional = CreateRecordingRenderingResources();
+    whole.resources.Camera.worldOriginX = 10;
+    fractional.resources.Camera.worldOriginX = 10.63;
+    AddMixedBlock(registry, 0, 0, 30);
+
+    RenderCanvas(registry, whole.resources);
+    RenderCanvas(registry, fractional.resources);
+
+    // The viewport is a whole-tile grid, so a sub-tile pan shows the same tiles
+    // until the origin crosses into the next one.
+    expect(fractional.drawnGlyphs).toEqual(whole.drawnGlyphs);
+  });
+
+  // Negative origins are where truncation and flooring disagree, and the click
+  // path shares this floor: get it wrong and clicks land a row off the glyph.
+  it("places a block below it by rounding the origin down, not towards zero", () => {
+    const registry = BuildTestRegistry();
+    const { resources, drawnGlyphs } = CreateRecordingRenderingResources();
+    resources.Camera.worldOriginY = -10.37;
+    AddMixedBlock(registry, 0, 0, 10);
+
+    RenderCanvas(registry, resources);
+
+    // World row 0 sits 11 rows below a camera whose origin tile is -11.
+    const screenRows = new Set(drawnGlyphs.map((glyph) => glyph.canvasY / TileSizePixels - 0.5));
+    expect(screenRows).toEqual(new Set([11, 12, 13, 14, 15, 16, 17, 18, 19, 20]));
+    expect(new Set(drawnGlyphs.map((glyph) => glyph.model))).toEqual(new Set([".", "^"]));
+  });
+});
+
 describe("fill style memoisation", () => {
   it("writes one style per colour run, not one per tile", () => {
     const registry = BuildTestRegistry();

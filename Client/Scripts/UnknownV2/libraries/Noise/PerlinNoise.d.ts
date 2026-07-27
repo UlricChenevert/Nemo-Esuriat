@@ -13,6 +13,21 @@ export interface PerlinConfiguration {
     Persistence: number;
     /** Frequency multiplier per octave. Above 1 so each octave is finer than the last. */
     Lacunarity: number;
+    /**
+     * Contrast applied to the summed octaves before they are remapped onto [0, 1].
+     *
+     * Averaging octaves pulls the result toward zero: the octaves are only
+     * partially independent, so their amplitude-weighted mean is far narrower
+     * than any one of them. Left uncorrected the field bunches around the middle
+     * of [0, 1] and the extreme terrain bands become unreachable — with four
+     * octaves it never descended past 0.28, so water below a 0.3 threshold
+     * simply never generated. This stretches it back out.
+     *
+     * Above the value the octave count warrants, the clamp in GetNoise starts
+     * biting and peaks and troughs flatten into plateaus. 1 leaves the field
+     * untouched.
+     */
+    Gain: number;
 }
 /**
  * Deterministic 2D Perlin noise over infinite world space.
@@ -36,6 +51,7 @@ export declare class PerlinNoise implements INoiseGenerator {
     private readonly _octaves;
     private readonly _persistence;
     private readonly _lacunarity;
+    private readonly _gain;
     constructor(randomNumberGenerator: IRandomNumberGenerator, configuration: PerlinConfiguration);
     GetNoise(worldX: number, worldY: number): number;
     /**

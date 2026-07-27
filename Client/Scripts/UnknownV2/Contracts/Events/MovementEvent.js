@@ -1,14 +1,9 @@
-export class GameMovementEvent {
-    ControllingEntity;
-    MovingEntity;
-    OldPosition;
-    NewPosition;
-    type = "MovementEvent";
-    constructor(ControllingEntity, MovingEntity, OldPosition, NewPosition) {
-        this.ControllingEntity = ControllingEntity;
-        this.MovingEntity = MovingEntity;
-        this.OldPosition = OldPosition;
-        this.NewPosition = NewPosition;
-    }
-}
+// import type { IGameEvent } from "../../Interfaces/IGameEvent.ts";
+// import type { Entity } from "./../Components/Entity.ts";
+// import type { Position } from "../Components/Position.ts";
+export {};
+// export class GameMovementEvent implements IGameEvent {
+//     readonly type = "MovementEvent"
+//     constructor (public ControllingEntity : Entity, public MovingEntity : Entity, public OldPosition : Position, public NewPosition : Position) {}
+// }
 //# sourceMappingURL=MovementEvent.js.map

@@ -11,12 +11,13 @@ import { DecidesMovement } from "../Contracts/Tags/DecidesMovement.js";
 import { IsCollidable } from "../Contracts/Tags/IsCollideable.js";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.js";
 import { IsPlayer } from "../Contracts/Tags/IsPlayer.js";
+import { MovementFlag } from "../Contracts/Tags/MovementFlag.js";
 export class EntityBuilder {
     registry;
     entity;
-    constructor(registry) {
+    constructor(registry, entity) {
         this.registry = registry;
-        this.entity = this.registry.CreateEntity();
+        this.entity = (entity) ? entity : this.registry.CreateEntity();
         return this;
     }
     AddPosition(position) {
@@ -44,17 +45,19 @@ export class EntityBuilder {
         this.registry.RegisterEntity(this.entity, ChunkCoordinate, chunkCoordinate);
         return this;
     }
-    AddTags(isSelectable, isCollidable, isMoveable, isPlayer, decidesMovement) {
+    AddMovement(speed) {
+        this.registry.RegisterEntity(this.entity, IsMoveable, new IsMoveable(speed));
+        return this;
+    }
+    AddTags(isSelectable, isCollidable, isPlayer, movementFlag) {
         if (isSelectable)
             this.registry.RegisterEntity(this.entity, IsSelectable, new IsSelectable);
         if (isCollidable)
             this.registry.RegisterEntity(this.entity, IsCollidable, new IsCollidable());
-        if (isMoveable)
-            this.registry.RegisterEntity(this.entity, IsMoveable, new IsMoveable());
         if (isPlayer)
             this.registry.RegisterEntity(this.entity, IsPlayer, new IsPlayer());
-        if (decidesMovement)
-            this.registry.RegisterEntity(this.entity, DecidesMovement, new DecidesMovement());
+        if (movementFlag)
+            this.registry.RegisterEntity(this.entity, MovementFlag, new MovementFlag());
         return this;
     }
     AddOwner(owner) {

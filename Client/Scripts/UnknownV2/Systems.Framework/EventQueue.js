@@ -18,8 +18,8 @@ export class EventQueue {
         return this.Events.filter((event) => event instanceof EventConstructor).ToList();
     }
     Clear() {
-        this.Events = this.nextQueue;
         this.Events.forEach((event) => { console.debug(event); });
+        this.Events = this.nextQueue;
         this.nextQueue = new LinkedList();
     }
 }

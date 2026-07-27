@@ -1,23 +1,29 @@
-import { GameWidth } from "../Configuration/GameConstants.js";
-import { Position } from "../Contracts/Components/Position.js";
+import { OwnedBy } from "../Contracts/Components/OwnedBy.js";
+import { SelectionState } from "../Contracts/Components/SelectionState.js";
 import { GameCollisionEvent } from "../Contracts/Events/GameCollisionEvent.js";
-import { IsCollidable } from "../Contracts/Tags/IsCollideable.js";
-import { isNotWithinGameBorder } from "../Utilities/PositionUtilities.js";
+import { IsMoveable } from "../Contracts/Tags/IsMovable.js";
+import { MovementFlag } from "../Contracts/Tags/MovementFlag.js";
 export function HandleCollision(registry, eventQueue) {
-    // One distinct array per cell. `Array(n).fill([])` would share a single array
-    // across every cell, making every entity collide with every other entity.
-    const flatBoardOfEntityLocations = Array.from({ length: GameWidth * GameWidth }, () => []);
-    registry.ForEachEntityWith([Position, IsCollidable], (collidingEntity, position, _) => {
-        if (isNotWithinGameBorder(position))
-            return;
-        const flattenedIndex = position.x * GameWidth + position.y;
-        const entitiesInLocation = flatBoardOfEntityLocations[flattenedIndex];
-        if (entitiesInLocation.length != 0) {
-            entitiesInLocation.forEach(collidedEntity => {
-                eventQueue.EnqueueEvent(new GameCollisionEvent(collidingEntity, collidedEntity));
-            });
-        }
-        entitiesInLocation.push(collidingEntity);
+    const collisions = eventQueue.GetEventsOfType(GameCollisionEvent);
+    if (collisions.length == 0)
+        return;
+    collisions.forEach((collision) => {
+        TryRemoveMovementFlag(registry, collision.collidingEntity, collision.collidedEntity);
+        TryRemoveMovementFlag(registry, collision.collidedEntity, collision.collidingEntity);
     });
+}
+function TryRemoveMovementFlag(registry, flag, movingEntity) {
+    if (registry.GetComponent(flag, MovementFlag)) {
+        if (!registry.GetComponent(movingEntity, IsMoveable))
+            throw new Error("Unexpected state!");
+        const owner = registry.GetComponent(movingEntity, OwnedBy);
+        if (!owner?.owner)
+            throw new Error("Weird state!");
+        const selectionState = registry.GetComponent(owner.owner, SelectionState);
+        if (!selectionState?.MovementFlag)
+            throw new Error("Weird state!");
+        selectionState.MovementFlag = undefined;
+        registry.DestroyEntity(flag);
+    }
 }
 //# sourceMappingURL=HandleCollision.js.map

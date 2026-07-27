@@ -1,4 +1,4 @@
-import { TerrainKind, TerrainPalette, TerrainThresholds } from "../Configuration/DisplayConstants.ts";
+import { TerrainBands, TerrainKind, TerrainPalette, TerrainShadeCount, TerrainThresholds } from "../Configuration/DisplayConstants.ts";
 import { ChunkWidth } from "../Configuration/WorldConstants.ts";
 import { MultiTileRepresentation } from "../Contracts/Components/MultiTileRepresentation.ts";
 import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
@@ -16,6 +16,32 @@ export function BandNoiseToTerrain (noise : number) : number {
     if (noise > TerrainThresholds.Grassland) return TerrainKind.Grass
 
     return TerrainKind.Water
+}
+
+/**
+ * The shaded palette entry a noise value produces: its terrain kind, plus how
+ * bright that tile is within the kind's band.
+ *
+ * This is what keeps the height the noise field already computed instead of
+ * discarding everything except which bucket it landed in. A tile near the bottom
+ * of its band draws dark and one near the top draws light, so slopes read as
+ * slopes rather than as flat colour.
+ *
+ * The kind still comes from BandNoiseToTerrain, so glyphs and terrain boundaries
+ * are unchanged — only the colour within a band is new.
+ */
+export function ShadeNoiseToPaletteIndex (noise : number) : number {
+    const kind = BandNoiseToTerrain(noise)
+    const band = TerrainBands[kind]!
+
+    // Clamped rather than trusted: the noise generator promises [0, 1], but a
+    // value sitting exactly on a bound (or a fixed-value generator in a test)
+    // would otherwise round up into the next band's shades and draw a mountain
+    // colour on a hill glyph.
+    const position = (noise - band.lowerBound) / (band.upperBound - band.lowerBound)
+    const shade = Math.max(0, Math.min(TerrainShadeCount - 1, Math.floor(position * TerrainShadeCount)))
+
+    return kind * TerrainShadeCount + shade
 }
 
 /**
@@ -50,7 +76,7 @@ export function GenerateChunk (chunkX : number, chunkY : number, noiseGenerator 
             // neighbouring chunks line up with no seam at their shared edge.
             const noise = noiseGenerator.GetNoise(worldOriginX + localX, worldOriginY + localY)
 
-            paletteIndices[rowOffset + localX] = BandNoiseToTerrain(noise)
+            paletteIndices[rowOffset + localX] = ShadeNoiseToPaletteIndex(noise)
         }
     }
 

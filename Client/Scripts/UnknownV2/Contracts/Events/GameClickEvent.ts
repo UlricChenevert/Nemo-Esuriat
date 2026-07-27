@@ -1,13 +1,23 @@
 import { TileSizePixels } from "../../Configuration/DisplayConstants.ts";
 import type { IGameEvent } from "../../Interfaces/IGameEvent.ts";
-import { Position } from "../Components/Position.ts";
+import { WorldTileOfScreenTile } from "../../Utilities/CameraUtilities.ts";
+import type { Position } from "../Components/Position.ts";
+import type { Camera } from "../SystemResources.ts";
 
 export class GameClickEvent implements IGameEvent {
     readonly type = "ClickEvent";
 
+    /**
+     * WORLD space, not screen space.
+     *
+     * Every consumer compares this against entity positions or writes it into a
+     * TargetLocation, all of which are world coordinates. Leaving it in screen
+     * space -- which it was until the camera could pan -- meant clicking the same
+     * visible tile twice commanded two different destinations.
+     */
     position : Position
 
-    constructor(pointerEvent : MouseEvent, canvasElement : HTMLCanvasElement) {
+    constructor(pointerEvent : MouseEvent, canvasElement : HTMLCanvasElement, camera : Camera) {
         const canvasPositioningRectangle = canvasElement.getBoundingClientRect()
 
         // The click arrives in CSS pixels relative to the element; scale into the
@@ -20,7 +30,7 @@ export class GameClickEvent implements IGameEvent {
         const pixelX = (pointerEvent.clientX - canvasPositioningRectangle.left) * scaleX
         const pixelY = (pointerEvent.clientY - canvasPositioningRectangle.top) * scaleY
 
-        this.position = new Position(Math.floor(pixelX / TileSizePixels), Math.floor(pixelY / TileSizePixels))
+        this.position = WorldTileOfScreenTile(camera, Math.floor(pixelX / TileSizePixels), Math.floor(pixelY / TileSizePixels))
     }
 
 }

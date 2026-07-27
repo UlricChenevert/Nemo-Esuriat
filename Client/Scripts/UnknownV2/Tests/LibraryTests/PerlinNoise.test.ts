@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { LinearCongruentialGenerator } from "../../Libraries/Random/LinearCongruentialGenerator.ts";
 import { PerlinNoise, type PerlinConfiguration } from "../../Libraries/Noise/PerlinNoise.ts";
+import { TerrainThresholds } from "../../Configuration/DisplayConstants.ts";
 
 const BaseConfiguration : PerlinConfiguration = {
   GradientGridWidth: 32,
@@ -8,6 +9,7 @@ const BaseConfiguration : PerlinConfiguration = {
   Octaves: 4,
   Persistence: 0.5,
   Lacunarity: 2,
+  Gain: 2,
 };
 
 const Build = (seed = 1000, overrides : Partial<PerlinConfiguration> = {}) =>
@@ -144,13 +146,63 @@ describe("gradient grid coverage", () => {
 });
 
 describe("distribution", () => {
-  it("spans a useful part of [0, 1]", () => {
-    const noise = Build();
-    const samples = Array.from({ length: 4000 }, (_unused, step) => noise.GetNoise(step * 0.7 - 1400, step * 0.3 - 600));
+  // This suite used to assert only that the minimum fell below 0.4 and the
+  // maximum above 0.6, which a field spanning just 0.28 to 0.70 satisfies. It
+  // did, and water — everything below 0.3 — was 0.01% of the world. Extremes
+  // prove nothing about a field that is bunched everywhere else, so these assert
+  // on quantiles: a threshold has to sit inside the bulk of the distribution,
+  // not past its tail.
+  const noise = Build();
+  const samples : number[] = [];
 
-    // Terrain thresholds sit at 0.3/0.5/0.6, so a field bunched into a narrow
-    // band would yield a world of one biome.
-    expect(Math.min(...samples)).toBeLessThan(0.4);
-    expect(Math.max(...samples)).toBeGreaterThan(0.6);
+  // Strided across the whole tiling period rather than along a line, so the
+  // sample is representative of the world instead of one transect through it.
+  const period = BaseConfiguration.GradientGridWidth * BaseConfiguration.NoiseScale;
+
+  for (let x = 0; x < period; x += 14)
+    for (let y = 0; y < period; y += 14) samples.push(noise.GetNoise(x, y));
+
+  const sorted = [...samples].sort((left, right) => left - right);
+  const Quantile = (fraction : number) => sorted[Math.floor(fraction * (sorted.length - 1))]!;
+
+  it("has enough samples to be meaningful", () => expect(samples.length).toBeGreaterThan(19000));
+
+  it("a tenth of the world is below the water line", () => expect(Quantile(0.1)).toBeLessThan(TerrainThresholds.Grassland));
+
+  it("a tenth of the world is above the hill line", () => expect(Quantile(0.9)).toBeGreaterThan(TerrainThresholds.Hill));
+
+  it("the highest ground clears the mountain line", () => expect(Quantile(0.99)).toBeGreaterThan(TerrainThresholds.Mountain));
+
+  it("stays within [0, 1]", () => expect(samples.every((value) => value >= 0 && value <= 1)).toBe(true));
+
+  // The clamp in GetNoise is a safety net, not a shaping tool. If Gain is pushed
+  // high enough that a real share of the field saturates, peaks and troughs
+  // flatten into featureless plateaus.
+  it("almost nothing saturates the clamp", () => {
+    const saturated = samples.filter((value) => value === 0 || value === 1).length;
+
+    expect(saturated / samples.length).toBeLessThan(0.001);
   });
+});
+
+describe("gain", () => {
+  it("is rejected at zero", () => expect(() => Build(1000, { Gain: 0 })).toThrow(RangeError));
+  it("is rejected when negative", () => expect(() => Build(1000, { Gain: -1 })).toThrow(RangeError));
+
+  it("widens the spread around the midpoint", () => {
+    const Spread = (gain : number) => {
+      const noise = Build(1000, { Gain: gain });
+      let widest = 0;
+
+      for (let step = 0; step < 2000; step++) widest = Math.max(widest, Math.abs(noise.GetNoise(step * 0.9 - 900, step * 0.4 - 400) - 0.5));
+
+      return widest;
+    };
+
+    expect(Spread(2)).toBeGreaterThan(Spread(1));
+  });
+
+  it("leaves a lattice point at the midpoint", () =>
+    // Perlin is identically 0 on the lattice, and any gain times 0 is still 0.
+    expect(Build(1000, { Octaves: 1, Gain: 5 }).GetNoise(BaseConfiguration.NoiseScale * 4, BaseConfiguration.NoiseScale * 4)).toBe(0.5));
 });

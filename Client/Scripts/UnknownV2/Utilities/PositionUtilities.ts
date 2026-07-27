@@ -10,6 +10,19 @@ export function isSamePosition(a : Position, b : Position) {
 }
 
 /**
+ * Whether two positions fall on the same tile.
+ *
+ * Distinct from isSamePosition, which is exact. Positions became continuous when
+ * HandleMovement started advancing entities by a fractional speed per tick, so
+ * an entity mid-step between (50,50) and (51,50) is at no integer position at
+ * all -- exact comparison against a click, which is always a whole tile, would
+ * never match it.
+ */
+export function isSameTile(a : Position, b : Position) {
+    return Math.floor(a.x) == Math.floor(b.x) && Math.floor(a.y) == Math.floor(b.y)
+}
+
+/**
  * Whether a screen-space tile falls outside the visible area.
  *
  * Distinct from isNotWithinGameBorder, which tests world space. Once the camera

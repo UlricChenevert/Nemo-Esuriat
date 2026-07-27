@@ -4,5 +4,5 @@ import type { Entity } from "./Entity.ts";
 // `source` is the piece that was picked up; `destination` is the tile it will
 // move to, and stays undefined until the player's second click.
 export class SelectionState {
-    constructor(public source : Entity, public destination? : Entity ) {}
+    constructor(public source : Entity, public MovementFlag? : Entity ) {}
 }

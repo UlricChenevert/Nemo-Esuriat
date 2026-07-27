@@ -8,7 +8,7 @@ import type { IRegistry } from "../Interfaces/IRegistry.ts";
 export declare class EntityBuilder {
     private registry;
     entity: Entity;
-    constructor(registry: IRegistry);
+    constructor(registry: IRegistry, entity?: Entity);
     AddPosition(position: Position): this;
     AddRepresentation(representation: Representation): this;
     AddLayer(layer: Layer): this;
@@ -19,7 +19,8 @@ export declare class EntityBuilder {
      */
     AddMultiTileRepresentation(multiTileRepresentation: MultiTileRepresentation): this;
     AddChunkCoordinate(chunkCoordinate: ChunkCoordinate): this;
-    AddTags(isSelectable: boolean, isCollidable: boolean, isMoveable: boolean, isPlayer: boolean, decidesMovement: boolean): this;
+    AddMovement(speed: number): this;
+    AddTags(isSelectable: boolean, isCollidable: boolean, isPlayer: boolean, movementFlag?: boolean): this;
     AddOwner(owner: Entity): this;
     GetEntity(): Entity;
     AddText(text: string, position: Position): this;

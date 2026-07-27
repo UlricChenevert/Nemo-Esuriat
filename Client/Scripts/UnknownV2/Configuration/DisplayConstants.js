@@ -1,5 +1,10 @@
 import { Color } from "../Contracts/Components/Color.js";
 import { Representation } from "../Contracts/Components/Representation.js";
+// This import closes a cycle: ColorUtilites reads ColorTranslation from here.
+// It is safe because ColorUtilites exports only hoisted function declarations,
+// so whichever module evaluates first, ScaleColorBrightness is already bound by
+// the time the palette below calls it.
+import { MixColors, ScaleColorBrightness } from "../Utilities/ColorUtilites.js";
 export const BoardColorMain = new Color(35, 35, 40);
 export const BoardColorAlternate = new Color(55, 55, 62);
 export const BackgroundColor = new Color(0, 0, 0);
@@ -49,11 +54,16 @@ export const GameColors = {
     Background: new Color(0, 0, 0),
     Player: new Color(255, 0, 0),
     Villages: new Color(0, 255, 0),
-    NPC: new Color(28, 92, 28),
+    NPC: new Color(0, 0, 255),
+    Animal: new Color(0, 0, 255),
     Water: new Color(48, 88, 160),
     Grass: new Color(56, 120, 56),
     Hill: new Color(120, 116, 72),
-    Mountain: new Color(148, 148, 156)
+    Mountain: new Color(148, 148, 156),
+    // Bare earth at the foot of the hills. Its own colour rather than something
+    // mixed from the four above, because brown needs red to lead green and none
+    // of the terrain hues are red-dominant — every blend of them lands on olive.
+    Earth: new Color(104, 74, 44)
 };
 /****************************************/
 //
@@ -63,13 +73,22 @@ export const GameColors = {
 /**
  * Noise values above each threshold produce that terrain, tested from highest to
  * lowest. The comparison is strictly greater-than, so a noise value of exactly
- * 0.6 is a Hill rather than a Mountain; the boundary is pinned by test so it
+ * 0.66 is a Hill rather than a Mountain; the boundary is pinned by test so it
  * cannot drift unnoticed.
+ *
+ * These are percentiles of the actual noise field, not round numbers. They were
+ * previously 0.3/0.5/0.6, chosen as if the generator returned something uniform
+ * over [0, 1] — it does not, and the field never descended far enough to reach
+ * the water band at all. Measured over the full world period with NoiseGain
+ * applied, these produce roughly 15% water, 45% grass, 28% hill, 12% mountain.
+ *
+ * They are only valid against the noise configuration in WorldConstants. Change
+ * NoiseOctaves, NoisePersistence, or NoiseGain and these must be re-measured.
  */
 export const TerrainThresholds = {
-    Mountain: 0.6,
-    Hill: 0.5,
-    Grassland: 0.3
+    Mountain: 0.66,
+    Hill: 0.53,
+    Grassland: 0.36
 };
 /**
  * Indices into TerrainPalette. A plain object rather than an enum because
@@ -83,16 +102,94 @@ export const TerrainKind = {
     Mountain: 3
 };
 /**
- * The glyph and colour for each terrain kind, indexed by TerrainKind.
+ * How many brightness steps each terrain band is divided into.
  *
- * Shared across every chunk rather than copied per tile. A chunk stores one byte
- * per tile indexing into this table, so terrain costs four Representation
- * objects in total instead of one per tile.
+ * Terrain used to be four flat colours, which read as dull blocks with no sense
+ * of elevation: the generator computed a continuous height and then threw all of
+ * it away except which of four buckets it fell in. Shading recovers that detail —
+ * deep water reads darker than shoreline, valley grass darker than upland grass.
+ *
+ * Eight steps is enough that a slope gradates smoothly at a 16px tile without
+ * banding, while keeping the whole palette at 32 entries — well inside the one
+ * byte per tile that MultiTileRepresentation stores.
  */
-export const TerrainPalette = [
-    new Representation(CharacterRepresentation.Water, GameColors.Water),
-    new Representation(CharacterRepresentation.Grass, GameColors.Grass),
-    new Representation(CharacterRepresentation.Hill, GameColors.Hill),
-    new Representation(CharacterRepresentation.Mountain, GameColors.Mountain)
+export const TerrainShadeCount = 8;
+/**
+ * Each terrain band: its glyph, the colour at each end of its noise range, and
+ * the range itself.
+ *
+ * A band is not a single hue shaded up and down. Its high end leans toward the
+ * terrain above it, so approaching a boundary reads as approaching it: grass
+ * dries to earthy brown before it becomes hill, and hill greys to stone before
+ * it becomes mountain, rather than staying vivid green or yellow right up to the
+ * switch and then jumping. Water and mountain have no terrain above them worth
+ * leaning into, so they are plain brightness ramps — depth for one, snowline for
+ * the other.
+ *
+ * lowColour is the colour at lowerBound and highColour the colour at upperBound;
+ * for grass that means lowColour is the *lighter* of the two, since grass darkens
+ * as it climbs.
+ *
+ * The bounds are derived from TerrainThresholds rather than retyped so the two
+ * cannot drift apart — the thresholds remain the single source of truth for
+ * where terrain changes. Water has no lower threshold and mountain no upper one,
+ * so they take the ends of the noise generator's normalized [0, 1] output.
+ */
+export const TerrainBands = [
+    {
+        glyph: CharacterRepresentation.Water,
+        lowColour: ScaleColorBrightness(GameColors.Water, 0.62),
+        highColour: ScaleColorBrightness(GameColors.Water, 1.32),
+        lowerBound: 0,
+        upperBound: TerrainThresholds.Grassland
+    },
+    {
+        glyph: CharacterRepresentation.Grass,
+        lowColour: ScaleColorBrightness(GameColors.Grass, 1.25),
+        // Most of the way to hill, then darkened: a shaded, earthy olive rather
+        // than the bright green that used to run right up to the boundary.
+        highColour: ScaleColorBrightness(MixColors(GameColors.Grass, GameColors.Hill, 0.8), 0.6),
+        lowerBound: TerrainThresholds.Grassland,
+        upperBound: TerrainThresholds.Hill
+    },
+    {
+        glyph: CharacterRepresentation.Hill,
+        // Bare brown earth, not the tan the base hill colour gives. The foot of a
+        // hill sat brighter and yellower than the grass it rose out of, which read
+        // as a lighting change rather than a change of ground. Brown makes the
+        // switch obvious while staying in the same dark, earthy family as the
+        // olive grass directly below it.
+        lowColour: GameColors.Earth,
+        // Nearly all the way to mountain, which drains the yellow out of the tan
+        // and leaves bare grey stone just below the peaks.
+        highColour: ScaleColorBrightness(MixColors(GameColors.Hill, GameColors.Mountain, 0.85), 0.85),
+        lowerBound: TerrainThresholds.Hill,
+        upperBound: TerrainThresholds.Mountain
+    },
+    {
+        glyph: CharacterRepresentation.Mountain,
+        lowColour: ScaleColorBrightness(GameColors.Mountain, 0.72),
+        highColour: ScaleColorBrightness(GameColors.Mountain, 1.38),
+        lowerBound: TerrainThresholds.Mountain,
+        upperBound: 1
+    }
 ];
+/**
+ * The glyph and colour for every terrain shade, indexed by
+ * kind * TerrainShadeCount + shade, where shade 0 sits at the band's lowerBound.
+ *
+ * Built once at module load and shared across every chunk rather than copied per
+ * tile. A chunk stores one byte per tile indexing into this table, so all of
+ * terrain costs 32 Representation objects in total instead of one per tile.
+ */
+export const TerrainPalette = TerrainBands.flatMap((band) => Array.from({ length: TerrainShadeCount }, (_unused, shade) => {
+    // Inclusive of both ends, so the first shade is exactly lowColour and the
+    // last exactly highColour.
+    const position = shade / (TerrainShadeCount - 1);
+    return new Representation(band.glyph, MixColors(band.lowColour, band.highColour, position));
+}));
+/** The TerrainKind a shaded palette index belongs to. */
+export function TerrainKindOfPaletteIndex(paletteIndex) {
+    return Math.floor(paletteIndex / TerrainShadeCount);
+}
 //# sourceMappingURL=DisplayConstants.js.map

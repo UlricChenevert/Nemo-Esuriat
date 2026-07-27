@@ -1,4 +1,4 @@
-import { GradientGridWidth, NoiseLacunarity, NoiseOctaves, NoisePersistence, NoiseScale, WorldSeed } from "../Configuration/WorldConstants.js";
+import { GradientGridWidth, NoiseGain, NoiseLacunarity, NoiseOctaves, NoisePersistence, NoiseScale, WorldSeed } from "../Configuration/WorldConstants.js";
 import { WorldStreamingResources } from "../Contracts/SystemResources.js";
 import { PerlinNoise } from "../Libraries/Noise/PerlinNoise.js";
 import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.js";
@@ -22,7 +22,8 @@ export function CreateWorldStreamingResources() {
         NoiseScale: NoiseScale,
         Octaves: NoiseOctaves,
         Persistence: NoisePersistence,
-        Lacunarity: NoiseLacunarity
+        Lacunarity: NoiseLacunarity,
+        Gain: NoiseGain
     });
     return new WorldStreamingResources(noiseGenerator, CreateDefaultKeyValueStore(), WorldSeed);
 }

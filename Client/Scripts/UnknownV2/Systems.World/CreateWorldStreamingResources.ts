@@ -1,4 +1,4 @@
-import { GradientGridWidth, NoiseLacunarity, NoiseOctaves, NoisePersistence, NoiseScale, WorldSeed } from "../Configuration/WorldConstants.ts";
+import { GradientGridWidth, NoiseGain, NoiseLacunarity, NoiseOctaves, NoisePersistence, NoiseScale, WorldSeed } from "../Configuration/WorldConstants.ts";
 import { WorldStreamingResources } from "../Contracts/SystemResources.ts";
 import { PerlinNoise } from "../Libraries/Noise/PerlinNoise.ts";
 import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
@@ -24,7 +24,8 @@ export function CreateWorldStreamingResources () : WorldStreamingResources {
         NoiseScale: NoiseScale,
         Octaves: NoiseOctaves,
         Persistence: NoisePersistence,
-        Lacunarity: NoiseLacunarity
+        Lacunarity: NoiseLacunarity,
+        Gain: NoiseGain
     })
 
     return new WorldStreamingResources(noiseGenerator, CreateDefaultKeyValueStore(), WorldSeed)

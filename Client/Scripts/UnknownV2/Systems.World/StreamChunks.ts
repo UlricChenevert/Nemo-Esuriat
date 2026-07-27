@@ -5,17 +5,17 @@ import type { Entity } from "../Contracts/Components/Entity.ts";
 import { Layer } from "../Contracts/Components/Layer.ts";
 import { MultiTileRepresentation } from "../Contracts/Components/MultiTileRepresentation.ts";
 import { Position } from "../Contracts/Components/Position.ts";
-import type { WorldStreamingResources } from "../Contracts/SystemResources.ts";
+import type { Camera, WorldStreamingResources } from "../Contracts/SystemResources.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { EntityBuilder } from "../Systems.Framework/EntityBuilder.ts";
-import { FindPlayerPosition } from "../Utilities/PlayerUtilities.ts";
 import { GenerateChunk } from "./GenerateChunk.ts";
+import { GameWidth } from "../Configuration/GameConstants.ts";
 
 /** How far the buffer extends from the centre chunk, in chunks. */
 const ChunkRadius = Math.floor(ChunkGridWidth / 2)
 
 /**
- * Keeps a square of terrain chunks loaded around the player, creating chunks
+ * Keeps a square of terrain chunks loaded around the viewport, creating chunks
  * that come into range and destroying those that leave.
  *
  * This reconciles the loaded set against the desired set rather than shifting a
@@ -26,17 +26,21 @@ const ChunkRadius = Math.floor(ChunkGridWidth / 2)
  * cases at all: startup, a single step, a diagonal step, and a jump across the
  * map are all just "which chunks are missing, and which are no longer wanted".
  */
-export function StreamChunks (registry : IRegistry, world : WorldStreamingResources) {
-    const playerPosition = FindPlayerPosition(registry)
-
-    if (playerPosition === undefined) return
+export function StreamChunks (registry : IRegistry, world : WorldStreamingResources, camera : Camera) {
+    // Centred on the viewport rather than the player, because the camera is free
+    // to pan away from them. Loading around the player instead would leave the
+    // panned-to part of the world blank -- and with a 3x3 buffer of 50-tile
+    // chunks against a 100-tile viewport, that shows up within one screen of
+    // panning.
+    const centerX = camera.worldOriginX + GameWidth / 2
+    const centerY = camera.worldOriginY + GameWidth / 2
 
     // Math.floor rather than truncation, so world x = -1 is chunk -1 rather than
     // sharing chunk 0 with x = 1 and making the origin chunk twice as wide.
-    const centerChunkX = Math.floor(playerPosition.x / ChunkWidth)
-    const centerChunkY = Math.floor(playerPosition.y / ChunkWidth)
+    const centerChunkX = Math.floor(centerX / ChunkWidth)
+    const centerChunkY = Math.floor(centerY / ChunkWidth)
 
-    // The player stays inside one chunk for tens of frames at a time, so this
+    // The camera stays inside one chunk for tens of frames at a time, so this
     // early-out is what keeps streaming off the per-frame cost sheet.
     if (centerChunkX === world.lastCenterChunkX && centerChunkY === world.lastCenterChunkY) return
 

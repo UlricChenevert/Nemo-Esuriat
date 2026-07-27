@@ -1,9 +1,11 @@
 import { CharacterRepresentation, GameColors, PlayerLayer, TileSizePixels } from "./Configuration/DisplayConstants.ts";
-import { GameWidth } from "./Configuration/GameConstants.ts";
+import { AnimalSpeed, GameWidth, HumanSpeed } from "./Configuration/GameConstants.ts";
 import { ChunkCoordinate } from "./Contracts/Components/ChunkCoordinate.ts";
 import { IsSelectable } from "./Contracts/Components/IsSelectible.ts";
 import { MultiTileRepresentation } from "./Contracts/Components/MultiTileRepresentation.ts";
 import { Layer } from "./Contracts/Components/Layer.ts";
+import { OwnedBy } from "./Contracts/Components/OwnedBy.ts";
+import { Owns } from "./Contracts/Components/Owns.ts";
 import { Position } from "./Contracts/Components/Position.ts";
 import { Representation } from "./Contracts/Components/Representation.ts";
 import { SelectionState } from "./Contracts/Components/SelectionState.ts";
@@ -18,8 +20,7 @@ import type { IDispose } from "./Interfaces/IDispose.ts";
 import type { IEventQueue } from "./Interfaces/IEventQueue.ts";
 import type { IRegistry } from "./Interfaces/IRegistry.ts";
 import { LinkedList } from "./Libraries/FastList/FastList.ts";
-import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.ts";
-import { HandleMovement } from "./Systems.EventHandlers/HandleMovement.ts";
+import { EnqueueCollision } from "./Systems.EventHandlers/EnqueueCollision.ts";
 import { HashMapComponentRegistry } from "./Systems.Framework/ComponentRegistry.ts";
 import { EntityBuilder } from "./Systems.Framework/EntityBuilder.ts";
 import { EventQueue } from "./Systems.Framework/EventQueue.ts";
@@ -28,7 +29,12 @@ import { HandleInputEvents } from "./Systems.Gameloop/HandleInputEvents.ts";
 import { RenderCanvas } from "./Systems.Gameloop/RenderCanvas.ts";
 import { CreateWorldStreamingResources } from "./Systems.World/CreateWorldStreamingResources.ts";
 import { StreamChunks } from "./Systems.World/StreamChunks.ts";
-import { UpdateCamera } from "./Systems.World/UpdateCamera.ts";
+import { CentreCameraOnPlayer } from "./Systems.World/CentreCameraOnPlayer.ts";
+import { PanCamera, ReleaseAllKeys } from "./Systems.World/PanCamera.ts";
+import { MovementFlag } from "./Contracts/Tags/MovementFlag.ts";
+import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.ts";
+import { TargetLocation } from "./Contracts/Components/TargetLocation.ts";
+import { HandleMovement } from "./Systems.Gameloop/HandleMovement.ts";
 
 export interface GameContext {
     registry : GlobalRegistry
@@ -54,44 +60,71 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(SelectionState, new HashMapComponentRegistry(SelectionState))
         .RegisterComponentRegistry(MultiTileRepresentation, new HashMapComponentRegistry(MultiTileRepresentation))
         .RegisterComponentRegistry(ChunkCoordinate, new HashMapComponentRegistry(ChunkCoordinate))
+        .RegisterComponentRegistry(OwnedBy, new HashMapComponentRegistry(OwnedBy))
+        .RegisterComponentRegistry(Owns, new HashMapComponentRegistry(Owns))
+        .RegisterComponentRegistry(MovementFlag, new HashMapComponentRegistry(MovementFlag))
+        .RegisterComponentRegistry(TargetLocation, new HashMapComponentRegistry(TargetLocation))
     
-    const keyEventListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent))}
-    const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement))}
+    const keyDownListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, true))}
+    const keyUpListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, false))}
+    const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement, resources.Rendering.Camera))}
 
-    resources.Rendering.canvasElement.addEventListener("keydown", keyEventListener)
+    // Losing focus swallows the keyup, so a key held while alt-tabbing away
+    // would otherwise still be "down" when the player came back and the camera
+    // would scroll on its own.
+    const blurListener = ()=>{ReleaseAllKeys(resources.Input)}
+
+    resources.Rendering.canvasElement.addEventListener("keydown", keyDownListener)
+    resources.Rendering.canvasElement.addEventListener("keyup", keyUpListener)
+    resources.Rendering.canvasElement.addEventListener("blur", blurListener)
     resources.Rendering.canvasElement.addEventListener("pointerdown", clickEventListener)
 
+    const player = new EntityBuilder(registry)
+        .AddPosition(new Position(50, 50))
+        .AddTags(false, false, true)
+        .GetEntity()
+        
     new EntityBuilder(registry)
         .AddPosition(new Position(50, 50))
         .AddRepresentation(new Representation(CharacterRepresentation.Character, GameColors.Player))
-        .AddTags(true, true, true, true, true)
+        .AddTags(true, true, false)
         .AddLayer(new Layer(PlayerLayer))
+        .AddMovement(HumanSpeed)
+        .AddOwner(player)
 
     new EntityBuilder(registry)
-        .AddPosition(new Position(10, 0))
-        .AddRepresentation(new Representation(CharacterRepresentation.NPC, GameColors.NPC))
+        .AddPosition(new Position(40, 40))
+        .AddRepresentation(new Representation(CharacterRepresentation.Animal, GameColors.Animal))
+        .AddMovement(AnimalSpeed)
+        .AddTags(false, true, false)
         .AddLayer(new Layer(PlayerLayer))
 
 
-    disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keydown", keyEventListener))
+    disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keydown", keyDownListener))
+    disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keyup", keyUpListener))
+    disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("blur", blurListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("pointerdown", clickEventListener))
+
+    // The one time anything aims the camera at the player. From here it is the
+    // keyboard's, and StreamChunks follows it rather than them.
+    CentreCameraOnPlayer(registry, resources.Rendering.Camera)
 
     return { registry, eventQueue, resources, disposalFunctions }
 }
 
 export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resources : Resources) {
     HandleInputEvents(registry, eventQueue)
-    HandleMovement(registry, eventQueue)
+    PanCamera(eventQueue, Resources.Input, Resources.Rendering.Camera, Resources.Time)
+    HandleMovement(registry, eventQueue, Resources.Time)
+    EnqueueCollision(registry, eventQueue)
+
+    // After the pan, and before rendering: streaming reacts to where the camera
+    // now points, so the chunks it just scrolled onto exist by the time they are
+    // drawn. Running it ahead of PanCamera would show a blank strip for a frame.
+    StreamChunks(registry, Resources.World, Resources.Rendering.Camera)
 
     HandleCollision(registry, eventQueue)
-
-    // Both react to the position movement just wrote, and both must run before
-    // rendering: streaming first so the chunk the player just entered exists,
-    // then the camera so it points at where the player actually is. Rendering
-    // ahead of either would show a gap for one frame.
-    StreamChunks(registry, Resources.World)
-    UpdateCamera(registry, Resources.Rendering.Camera)
-
+    
     RenderCanvas(registry, Resources.Rendering)
     eventQueue.Clear()
 }
@@ -115,8 +148,14 @@ export function StartGame (canvasElement : HTMLCanvasElement) : IDispose {
     let frameHandle = 0
     let running = true
 
-    const tick = () => {
+    // requestAnimationFrame hands the callback the frame's timestamp, which is
+    // what the tick length is measured from -- Date.now would also pick up any
+    // delay between the frame being scheduled and this callback running.
+    const tick = (frameMilliseconds : number) => {
         if (!running) return
+
+        context.resources.Time.Advance(frameMilliseconds)
+
         GameLoop(context.registry, context.eventQueue, context.resources)
         frameHandle = requestAnimationFrame(tick)
     }

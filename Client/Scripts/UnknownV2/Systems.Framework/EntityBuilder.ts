@@ -13,12 +13,14 @@ import { IsCollidable } from "../Contracts/Tags/IsCollideable.ts";
 import { IsMoveable } from "../Contracts/Tags/IsMovable.ts";
 import { IsPlayer } from "../Contracts/Tags/IsPlayer.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
+import { MovementFlag } from "../Contracts/Tags/MovementFlag.ts";
 
 export class EntityBuilder {
     entity : Entity
     
-    constructor (private registry : IRegistry) {
-        this.entity = this.registry.CreateEntity()
+    constructor (private registry : IRegistry, entity? : Entity) {
+        this.entity = (entity)? entity : this.registry.CreateEntity()
+        
         return this
     }
 
@@ -52,17 +54,23 @@ export class EntityBuilder {
         return this
     }
 
-    AddTags(isSelectable : boolean, isCollidable : boolean, isMoveable : boolean, isPlayer : boolean, decidesMovement : boolean) {
+    AddMovement(speed : number) {
+        this.registry.RegisterEntity(this.entity, IsMoveable, new IsMoveable(speed))
+
+        return this
+    }
+
+    AddTags(isSelectable : boolean, isCollidable : boolean, isPlayer : boolean, movementFlag? : boolean) {
         if (isSelectable) this.registry.RegisterEntity(this.entity, IsSelectable, new IsSelectable)
         if (isCollidable) this.registry.RegisterEntity(this.entity, IsCollidable, new IsCollidable())
-        if (isMoveable) this.registry.RegisterEntity(this.entity, IsMoveable, new IsMoveable())
         if (isPlayer) this.registry.RegisterEntity(this.entity, IsPlayer, new IsPlayer())
-        if (decidesMovement) this.registry.RegisterEntity(this.entity, DecidesMovement, new DecidesMovement())
+        if (movementFlag) this.registry.RegisterEntity(this.entity, MovementFlag, new MovementFlag())
 
         return this
     }
 
     AddOwner(owner : Entity) {
+
         this.registry.RegisterEntity(this.entity, OwnedBy, new OwnedBy(owner))
         this.registry.RegisterEntity(owner, Owns, new Owns(this.entity)) 
         return this

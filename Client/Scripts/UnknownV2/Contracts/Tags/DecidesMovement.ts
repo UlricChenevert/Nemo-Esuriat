@@ -1,1 +1,3 @@
-export class DecidesMovement {}
+export class DecidesMovement {
+    
+}

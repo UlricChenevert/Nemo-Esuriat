@@ -1,30 +1,36 @@
-import { GameWidth } from "../Configuration/GameConstants.ts";
 import type { Entity } from "../Contracts/Components/Entity.ts";
-import { Position } from "../Contracts/Components/Position.ts";
+import { OwnedBy } from "../Contracts/Components/OwnedBy.ts";
+import { SelectionState } from "../Contracts/Components/SelectionState.ts";
 import { GameCollisionEvent } from "../Contracts/Events/GameCollisionEvent.ts";
-import { IsCollidable } from "../Contracts/Tags/IsCollideable.ts";
+import { IsMoveable } from "../Contracts/Tags/IsMovable.ts";
+import { MovementFlag } from "../Contracts/Tags/MovementFlag.ts";
 import type { IEventQueue } from "../Interfaces/IEventQueue.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
-import { isNotWithinGameBorder } from "../Utilities/PositionUtilities.ts";
 
 export function HandleCollision(registry : IRegistry, eventQueue : IEventQueue) {
-    // One distinct array per cell. `Array(n).fill([])` would share a single array
-    // across every cell, making every entity collide with every other entity.
-    const flatBoardOfEntityLocations : Entity[][] = Array.from({ length: GameWidth * GameWidth }, () => [])
+    const collisions = eventQueue.GetEventsOfType(GameCollisionEvent)
 
-    registry.ForEachEntityWith([Position, IsCollidable], (collidingEntity, position, _)=> {
+    if (collisions.length == 0) return
 
-        if (isNotWithinGameBorder(position)) return
-
-        const flattenedIndex = position.x * GameWidth + position.y;
-        const entitiesInLocation = flatBoardOfEntityLocations[flattenedIndex]!
-
-        if (entitiesInLocation.length != 0) {
-            entitiesInLocation.forEach(collidedEntity => {
-                eventQueue.EnqueueEvent(new GameCollisionEvent(collidingEntity, collidedEntity)) 
-            }); 
-        }
-
-        entitiesInLocation.push(collidingEntity)
+    collisions.forEach((collision)=>{
+        TryRemoveMovementFlag(registry, collision.collidingEntity, collision.collidedEntity)
+        TryRemoveMovementFlag(registry, collision.collidedEntity, collision.collidingEntity)
     })
+}
+
+function TryRemoveMovementFlag(registry : IRegistry, flag : Entity, movingEntity : Entity) {
+    if (registry.GetComponent(flag, MovementFlag)) {
+        if (!registry.GetComponent(movingEntity, IsMoveable)) throw new Error("Unexpected state!")
+        
+        const owner = registry.GetComponent(movingEntity, OwnedBy)
+
+        if (!owner?.owner) throw new Error("Weird state!")
+
+        const selectionState = registry.GetComponent(owner.owner, SelectionState)
+
+        if (!selectionState?.MovementFlag) throw new Error("Weird state!")
+        
+        selectionState.MovementFlag = undefined 
+        registry.DestroyEntity(flag)
+    }
 }

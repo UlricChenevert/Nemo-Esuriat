@@ -3,10 +3,10 @@
 // move to, and stays undefined until the player's second click.
 export class SelectionState {
     source;
-    destination;
-    constructor(source, destination) {
+    MovementFlag;
+    constructor(source, MovementFlag) {
         this.source = source;
-        this.destination = destination;
+        this.MovementFlag = MovementFlag;
     }
 }
 //# sourceMappingURL=SelectionState.js.map

@@ -1,1 +1,3 @@
-export class IsMoveable {}
+export class IsMoveable {
+    constructor(public speed : number) {}
+}

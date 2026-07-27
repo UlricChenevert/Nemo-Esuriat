@@ -4,7 +4,14 @@ import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { FindPlayerPosition } from "../Utilities/PlayerUtilities.ts";
 
 /**
- * Centres the viewport on the player.
+ * Puts the player at the centre of the viewport.
+ *
+ * Called once at startup rather than every frame: the camera is free, and
+ * PanCamera is the only thing that moves it afterwards. Re-centring per frame
+ * would undo any pan as soon as anything moved, which is exactly what a free
+ * camera is not. It stays its own system, rather than being inlined into
+ * initialization, because a "recentre on my units" key is the obvious next thing
+ * to want and this is already what it would do.
  *
  * No clamping: the world is unbounded in every direction. If a finite world is
  * ever wanted, the limits belong here rather than in the renderer, so that the
@@ -14,7 +21,7 @@ import { FindPlayerPosition } from "../Utilities/PlayerUtilities.ts";
  * origin, so a frame between the player being destroyed and replaced does not
  * jump the view.
  */
-export function UpdateCamera (registry : IRegistry, camera : Camera) {
+export function CentreCameraOnPlayer (registry : IRegistry, camera : Camera) {
     const playerPosition = FindPlayerPosition(registry)
 
     if (playerPosition === undefined) return

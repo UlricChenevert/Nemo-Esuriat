@@ -18,8 +18,8 @@
     Game.ts; this scales it up for display while the renderer keeps drawing at
     native resolution (GameClickEvent rescales clicks back down). */
 #game {
-    width: min(90vw, 90vh);
-    height: min(90vw, 90vh);
+    width: min(100vw, 100vh);
+    height: min(100vw, 100vh);
     image-rendering: pixelated;
     outline: none;
 }

@@ -9,6 +9,19 @@ import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
  */
 export declare function BandNoiseToTerrain(noise: number): number;
 /**
+ * The shaded palette entry a noise value produces: its terrain kind, plus how
+ * bright that tile is within the kind's band.
+ *
+ * This is what keeps the height the noise field already computed instead of
+ * discarding everything except which bucket it landed in. A tile near the bottom
+ * of its band draws dark and one near the top draws light, so slopes read as
+ * slopes rather than as flat colour.
+ *
+ * The kind still comes from BandNoiseToTerrain, so glyphs and terrain boundaries
+ * are unchanged — only the colour within a band is new.
+ */
+export declare function ShadeNoiseToPaletteIndex(noise: number): number;
+/**
  * Builds one chunk of terrain by sampling the noise field.
  *
  * Pure and synchronous: no registry, no storage, no promises. Because it depends
