@@ -1,1 +1,0 @@
-{"version":3,"file":"GameCollisionEvent.d.ts","sourceRoot":"","sources":["GameCollisionEvent.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,gCAAgC,CAAC;AACjE,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,yBAAyB,CAAC;AAEtD,qBAAa,kBAAmB,YAAW,UAAU;IAE9B,eAAe,EAAG,MAAM;IAAS,cAAc,EAAG,MAAM;IAD3E,QAAQ,CAAC,IAAI,oBAAoB;gBACd,eAAe,EAAG,MAAM,EAAS,cAAc,EAAG,MAAM;CAC9E"}

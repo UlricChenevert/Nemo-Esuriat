@@ -1,1 +1,0 @@
-{"version":3,"file":"SelectionState.d.ts","sourceRoot":"","sources":["SelectionState.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,aAAa,CAAC;AAK1C,qBAAa,cAAc;IACJ,MAAM,EAAG,MAAM;IAAS,YAAY,CAAC,EAAG,MAAM;gBAA9C,MAAM,EAAG,MAAM,EAAS,YAAY,CAAC,EAAG,MAAM,YAAA;CACpE"}

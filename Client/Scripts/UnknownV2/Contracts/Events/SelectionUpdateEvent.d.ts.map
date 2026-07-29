@@ -1,1 +1,0 @@
-{"version":3,"file":"SelectionUpdateEvent.d.ts","sourceRoot":"","sources":["SelectionUpdateEvent.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,gCAAgC,CAAC;AACjE,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,yBAAyB,CAAC;AAEtD,qBAAa,oBAAqB,YAAW,UAAU;IAG/B,qBAAqB,EAAG,MAAM;IAAS,YAAY,EAAG,OAAO;IAFjF,QAAQ,CAAC,IAAI,qBAAqB;gBAEd,qBAAqB,EAAG,MAAM,EAAS,YAAY,EAAG,OAAO;CACpF"}
