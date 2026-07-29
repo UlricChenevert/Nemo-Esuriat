@@ -17,6 +17,14 @@ import { MovementFlag } from "../Contracts/Tags/MovementFlag.ts";
 import { HerdOwner } from "../Contracts/Components/HerdOwner.ts";
 import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
 import { AnimalSpeed } from "../Configuration/GameConstants.ts";
+import type { IRandomNumberGenerator } from "../Interfaces/IRandomNumberGenerator.ts";
+
+/**
+ * The fallback source of herd layouts, for callers with no generator of their
+ * own to pass. Shared rather than per-herd so successive herds keep drawing from
+ * one sequence instead of restarting it.
+ */
+const herdLayoutGenerator = new LinearCongruentialGenerator(Date.now())
 
 export class EntityBuilder {
     entity : Entity
@@ -125,11 +133,18 @@ export class EntityBuilder {
         return this
     }
 
-    MakeHerd(position : Position, amount : number, representationString : string) {
+    /**
+     * Turns this entity into the owner of a herd of `amount` animals scattered
+     * around `position`.
+     *
+     * Takes a generator rather than seeding one per call, which is what the
+     * first version did. Crossing a chunk boundary streams five chunks at once,
+     * so herds are routinely built within the same millisecond -- identically
+     * seeded, they came out as the same herd laid down twice.
+     */
+    MakeHerd(position : Position, amount : number, representationString : string, random : IRandomNumberGenerator = herdLayoutGenerator) {
         const herd = new HerdOwner()
         this.registry.RegisterEntity(this.entity, HerdOwner, herd)
-
-        const random = new LinearCongruentialGenerator(Date.now())
 
         for (let i = 0; i < amount; i++) {
             const distance = random.Random() * herd.WanderRadius
@@ -148,5 +163,7 @@ export class EntityBuilder {
                 .AddOwner(this.entity)
                 .GetEntity()
         }
+
+        return this
     }
 }

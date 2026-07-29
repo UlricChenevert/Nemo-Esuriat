@@ -1,4 +1,3 @@
-import { GameWidth } from "../Configuration/GameConstants.ts";
 import type { Entity } from "../Contracts/Components/Entity.ts";
 import { HerdOwner } from "../Contracts/Components/HerdOwner.ts";
 import { Owns } from "../Contracts/Components/Owns.ts";
@@ -10,7 +9,7 @@ import { IsMoveable } from "../Contracts/Tags/IsMovable.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
 import { SpatialHashGrid } from "../Libraries/Spatial/SpatialHashGrid.ts";
-import { clampMagnitude, getNormalizedDistanceVector, isNotWithinGameBorder, magnitude, normalize } from "../Utilities/PositionUtilities.ts";
+import { clampMagnitude, getNormalizedDistanceVector, magnitude, normalize } from "../Utilities/PositionUtilities.ts";
 
 /**
  * The relative pull of the four steering terms, each of which arrives as a unit
@@ -36,24 +35,6 @@ const GoalWeight = 1.0
  * trying to get away from.
  */
 const AvoidHumanWeight = 4.0
-
-/**
- * How many bearings to try before giving up and leaving the herd aimed where it
- * already was. A herd pinned against the border rejects the bearings pointing
- * out of the world, so the sweep below needs enough attempts to come most of the
- * way round; the cap exists only so it cannot spin forever.
- */
-const MaxWanderAttempts = 10
-
-/**
- * How far each rejected bearing rotates the next attempt, in radians.
- *
- * Rejections are swept through consistently rather than re-rolled at random so
- * that a herd walking into the border curves along it. Re-rolling would have it
- * jitter in place at the edge, picking a new direction every tick and averaging
- * out to no travel at all.
- */
-const WanderRejectionTurn = Math.PI / 6
 
 // Shared by every herd. Seeding per-herd from the clock would hand herds created
 // in the same tick identical wander paths.
@@ -284,35 +265,21 @@ function ResolveWanderTarget(herdController : HerdOwner, centroid : Position) : 
     // first leg is the one and only free choice of direction.
     const currentBearing = herdController.WanderBearing ?? wanderGenerator.Random() * 2 * Math.PI
 
-    const turn = (wanderGenerator.Random() * 2 - 1) * herdController.MaxTurn
+    const bearing = currentBearing + (wanderGenerator.Random() * 2 - 1) * herdController.MaxTurn
 
-    // Sweep rejected bearings the same way the herd was already turning, so
-    // being turned aside by the border continues the curve instead of undoing it.
-    const sweepDirection = (turn < 0) ? -1 : 1
+    // Nothing bounds where a herd may roam. The world is streamed in chunks
+    // around the camera and has no extent to be outside of, so there is no edge
+    // to hold them inside -- and the obvious candidate for one, GameWidth, is
+    // the width of the viewport, not of the world. Rejecting targets against it
+    // sent every herd standing beyond the first hundred tiles to the same
+    // fallback point, where they converged into one enormous herd.
+    const target = new Position(
+        centroid.x + Math.cos(bearing) * herdController.WanderRadius,
+        centroid.y + Math.sin(bearing) * herdController.WanderRadius
+    )
 
-    for (let attempt = 0; attempt < MaxWanderAttempts; attempt++) {
-        const bearing = currentBearing + turn + sweepDirection * attempt * WanderRejectionTurn
+    herdController.WanderBearing = bearing
+    herdController.WanderTarget = target
 
-        const candidate = new Position(
-            centroid.x + Math.cos(bearing) * herdController.WanderRadius,
-            centroid.y + Math.sin(bearing) * herdController.WanderRadius
-        )
-
-        if (isNotWithinGameBorder(candidate)) continue
-
-        herdController.WanderBearing = bearing
-        herdController.WanderTarget = candidate
-
-        return candidate
-    }
-
-    // Every bearing left the world, which takes a WanderRadius wider than the
-    // world itself. Aim at the middle: always inside the border, and it walks
-    // the herd back off whatever edge it is stuck against.
-    const fallback = new Position(GameWidth / 2, GameWidth / 2)
-
-    herdController.WanderBearing = Math.atan2(fallback.y - centroid.y, fallback.x - centroid.x)
-    herdController.WanderTarget = fallback
-
-    return fallback
+    return target
 }

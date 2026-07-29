@@ -1,6 +1,6 @@
 import { PageOption, ResolveURLData } from "../../../WebCore/Contracts/PageOption.js"
 import { Utility } from "../../../WebCore/Utility.js"
-import { constructUnknownViewModel, constructChessViewModel } from "../../../WebCore/Utility/ConfiguredViewModels.js"
+import { constructUnknownV2ViewModel, constructChessViewModel } from "../../../WebCore/Utility/ConfiguredViewModels.js"
 import { ArticleModel } from "../ViewModels/ArticleModel.js"
 import { BlogPreviewer } from "../ViewModels/BlogPreviewer.js"
 
@@ -175,11 +175,11 @@ export const constructBlogPreviewViewModel = ()=>{
 export const constructProjectPreviewViewModel = ()=>{
     return Utility.BundleViewAndModel(new BlogPreviewer([
         {
-            FriendlyName: "Unknown", 
+            FriendlyName: "Unknown",
             pageKey: "Unknown",
-            Description: "Engineered Unknown and its engine from the ground up to explore software design while incorporating other interests such as cartography, sociology, biology, and ancient world",
-            PictureUrl: "/Images/Blogs/Unknown Thumbnail.png",
-            modelConstructor: constructUnknownViewModel
+            Description: "Engineered Unknown and its engine from the ground up to explore software design while incorporating other interests such as cartography, sociology, biology, and ancient world. The current build runs on a custom entity-component-system with a canvas renderer, a procedurally generated world streamed in chunks around the camera, and boid driven herding animals",
+            PictureUrl: "/Images/Blogs/UnknownV2-thumbnail.png",
+            modelConstructor: constructUnknownV2ViewModel
         },
         {
             FriendlyName: "Chess",

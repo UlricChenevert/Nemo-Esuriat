@@ -1,4 +1,5 @@
 import { FontStyle, MaxTickSeconds } from "../Configuration/GameConstants.ts";
+import type { Entity } from "./Components/Entity.ts";
 import type { MultiTileRepresentation } from "./Components/MultiTileRepresentation.ts";
 import type { IKeyValueStore } from "../Interfaces/IKeyValueStore.ts";
 import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
@@ -90,6 +91,17 @@ export class WorldStreamingResources {
      */
     lastCenterChunkX = Number.NaN
     lastCenterChunkY = Number.NaN
+
+    /**
+     * Chunk entities created by the most recent StreamChunks call, for systems
+     * that populate fresh terrain to consume.
+     *
+     * Emptied at the top of every StreamChunks call, including the ones that
+     * early-out, so it never describes a tick older than the current one. A
+     * populating system that missed its turn must not get a second chance at the
+     * same chunks -- that is how one chunk ends up with a herd per frame.
+     */
+    chunksLoadedThisTick : Entity[] = []
 
     constructor(
         public noiseGenerator : INoiseGenerator,

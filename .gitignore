@@ -8,3 +8,9 @@ Client/Scripts/Chess/**/*.js
 Client/Scripts/Chess/**/*.js.map
 Client/Scripts/Chess/**/*.d.ts
 Client/Scripts/Chess/**/*.d.ts.map
+
+# Same for Unknown V2 (game.html imports ./Game.js as a sibling).
+Client/Scripts/UnknownV2/**/*.js
+Client/Scripts/UnknownV2/**/*.js.map
+Client/Scripts/UnknownV2/**/*.d.ts
+Client/Scripts/UnknownV2/**/*.d.ts.map

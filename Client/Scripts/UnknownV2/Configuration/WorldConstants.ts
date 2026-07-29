@@ -73,3 +73,35 @@ export const NoiseGain = 2
  * away and returning, which hysteresis never did.
  */
 export const RecentChunkCacheSize = 16
+
+/**
+ * The chance a freshly streamed chunk gets a herd of animals on it.
+ *
+ * Rolled per chunk rather than kept at a fixed world density, so the world
+ * populates as it is explored and needs no list of where the animals ought to
+ * be. Crossing a chunk boundary streams five new chunks, so at 1 in 5 the player
+ * meets roughly one new herd per chunk they walk across.
+ */
+export const HerdSpawnChancePerChunk = 0.2
+
+/**
+ * How many herds may exist at once.
+ *
+ * A hard cap rather than a spawn rate that happens to balance out: exploring in
+ * a straight line streams chunks forever, and every one of them rolling for a
+ * herd is an unbounded population of animals all being steered every tick.
+ */
+export const MaxLiveHerds = 10
+
+/** Animals in a spawned herd, inclusive at both ends. */
+export const MinHerdSize = 4
+export const MaxHerdSize = 9
+
+/**
+ * How many tiles to try before giving up on placing a herd in a chunk.
+ *
+ * Placement rejects water, and an all-ocean chunk has nowhere legal to stand.
+ * Sampling a fixed number of tiles and abandoning the chunk costs less than
+ * scanning all 2500 to prove the same thing.
+ */
+export const HerdPlacementAttempts = 12

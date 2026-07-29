@@ -13,7 +13,7 @@ import type { IEventQueue } from "../Interfaces/IEventQueue.ts";
  * Y grows downward, matching how RenderCanvas maps a tile to a canvas row, so
  * "up" is negative.
  */
-const PanByKeyCode : Record<string, { deltaX : number, deltaY : number }> = {
+export const PanByKeyCode : Record<string, { deltaX : number, deltaY : number }> = {
     ArrowUp: { deltaX: 0, deltaY: -1 },
     ArrowDown: { deltaX: 0, deltaY: 1 },
     ArrowLeft: { deltaX: -1, deltaY: 0 },

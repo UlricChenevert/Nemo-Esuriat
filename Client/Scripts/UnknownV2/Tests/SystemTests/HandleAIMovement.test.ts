@@ -410,21 +410,48 @@ describe("the wander target", () => {
     }
   });
 
-  it("still turns further than the limit when the border demands it", () => {
-    // Curving along an edge is worth breaking the smooth-turn budget for: the
-    // alternative is a herd that walks into the border and stops.
-    const herdOwner = new HerdOwner(1, 2, 25, 2, 8, Math.PI / 20);
-    const { registry } = BuildHerd([[2, 2], [3, 2], [2, 3]], herdOwner);
-
-    // Aimed hard into the corner, a direction no legal target lies in.
-    herdOwner.WanderBearing = Math.PI * 1.25;
+  it("roams from wherever the herd is, however far from the origin", () => {
+    // The world streams around the camera and has no border. Rejecting targets
+    // against GameWidth -- which measures the viewport, not the world -- sent
+    // every herd past the first hundred tiles to one shared fallback point, and
+    // they piled up into a single enormous herd.
+    const herdOwner = new HerdOwner();
+    const { registry } = BuildHerd([[8000, 8000], [8002, 8000], [8001, 8002]], herdOwner);
 
     HandleAIMovement(registry);
 
     const target = herdOwner.WanderTarget!;
 
-    expect(target.x).toBeGreaterThanOrEqual(0);
-    expect(target.y).toBeGreaterThanOrEqual(0);
+    expect(DistanceBetween(target, new Position(8001, 8000.666666666666))).toBeCloseTo(herdOwner.WanderRadius);
+  });
+
+  it("sends distant herds to different places", () => {
+    // The same bug from the other side: two herds nowhere near each other must
+    // not be handed the same destination.
+    const first = new HerdOwner();
+    const second = new HerdOwner();
+
+    const registry = BuildTestRegistry();
+
+    [
+      {tiles: [[4000, 4000], [4002, 4000]] as [number, number][], owner: first},
+      {tiles: [[-4000, -4000], [-4002, -4000]] as [number, number][], owner: second},
+    ].forEach(({tiles, owner}) => {
+      const herdEntity = new EntityBuilder(registry).GetEntity();
+
+      registry.RegisterEntity(herdEntity, HerdOwner, owner);
+
+      tiles.forEach(([x, y]) =>
+        new EntityBuilder(registry)
+          .AddPosition(new Position(x, y))
+          .AddMovement(AnimalSpeed)
+          .AddOwner(herdEntity)
+      );
+    });
+
+    HandleAIMovement(registry);
+
+    expect(DistanceBetween(first.WanderTarget!, second.WanderTarget!)).toBeGreaterThan(1000);
   });
 
   it("stays put while the herd is still travelling", () => {
@@ -455,23 +482,17 @@ describe("the wander target", () => {
     expect(herdOwner.WanderTarget).not.toEqual(new Position(51, 51));
   });
 
-  it("stays inside the world border", () => {
-    // A herd pressed into the corner rejects most of its rolls, which is the
-    // case that would otherwise send it walking off the edge of the world.
-    const { registry, herdOwner } = BuildHerd([[2, 2], [3, 2], [2, 3]], new HerdOwner(1, 2, 25));
+  it("always sits one wander radius from the herd", () => {
+    const { registry, herdOwner } = BuildHerd([[50, 50], [52, 50], [51, 52]], new HerdOwner(1, 2, 25));
 
     for (let tick = 0; tick < 50; tick++) {
+      // Stand the herd on its target so every iteration rolls a fresh one.
+      herdOwner.WanderTarget = new Position(51, 50.666666666666664);
+
       HandleAIMovement(registry);
 
-      const target = herdOwner.WanderTarget!;
-
-      expect(target.x).toBeGreaterThanOrEqual(0);
-      expect(target.y).toBeGreaterThanOrEqual(0);
-      expect(target.x).toBeLessThan(100);
-      expect(target.y).toBeLessThan(100);
-
-      // Force an arrival so a fresh roll happens every iteration.
-      herdOwner.WanderTarget = new Position(2, 2);
+      expect(DistanceBetween(herdOwner.WanderTarget!, new Position(51, 50.666666666666664)))
+        .toBeCloseTo(25);
     }
   });
 });

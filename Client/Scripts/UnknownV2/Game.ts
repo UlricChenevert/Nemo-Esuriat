@@ -1,5 +1,5 @@
-import { CharacterRepresentation, GameColors, PlayerLayer, TileSizePixels } from "./Configuration/DisplayConstants.ts";
-import { AnimalSpeed, GameWidth, HumanSpeed } from "./Configuration/GameConstants.ts";
+import { CharacterRepresentation, GameColors, PlayerLayer } from "./Configuration/DisplayConstants.ts";
+import { AnimalSpeed, HumanSpeed } from "./Configuration/GameConstants.ts";
 import { ChunkCoordinate } from "./Contracts/Components/ChunkCoordinate.ts";
 import { IsSelectable } from "./Contracts/Components/IsSelectible.ts";
 import { MultiTileRepresentation } from "./Contracts/Components/MultiTileRepresentation.ts";
@@ -29,8 +29,9 @@ import { HandleInputEvents } from "./Systems.Gameloop/HandleInputEvents.ts";
 import { RenderCanvas } from "./Systems.Gameloop/RenderCanvas.ts";
 import { CreateWorldStreamingResources } from "./Systems.World/CreateWorldStreamingResources.ts";
 import { StreamChunks } from "./Systems.World/StreamChunks.ts";
+import { PopulateHerds } from "./Systems.World/PopulateHerds.ts";
 import { CentreCameraOnPlayer } from "./Systems.World/CentreCameraOnPlayer.ts";
-import { PanCamera, ReleaseAllKeys } from "./Systems.World/PanCamera.ts";
+import { PanByKeyCode, PanCamera, ReleaseAllKeys } from "./Systems.World/PanCamera.ts";
 import { MovementFlag } from "./Contracts/Tags/MovementFlag.ts";
 import { HandleCollision } from "./Systems.EventHandlers/HandleCollision.ts";
 import { TargetLocation } from "./Contracts/Components/TargetLocation.ts";
@@ -70,7 +71,15 @@ export function Initialization (resources: Resources) : GameContext {
         .RegisterComponentRegistry(HerdOwner, new HashMapComponentRegistry(HerdOwner))
         .RegisterComponentRegistry(Human, new HashMapComponentRegistry(Human))
     
-    const keyDownListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, true))}
+    const keyDownListener = (keyEvent: KeyboardEvent)=>{
+        // Arrow keys scroll the page by default. On the standalone harness there
+        // is nothing to scroll, but embedded in the site the game would slide out
+        // from under the player the moment they tried to pan. Only the pan keys
+        // are swallowed, so browser shortcuts still work.
+        if (PanByKeyCode[keyEvent.code] !== undefined && !keyEvent.ctrlKey && !keyEvent.altKey && !keyEvent.metaKey) keyEvent.preventDefault()
+
+        eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, true))
+    }
     const keyUpListener = (keyEvent: KeyboardEvent)=>{eventQueue.EnqueueEvent(new GameKeyboardEvent(keyEvent, false))}
     const clickEventListener = (event: PointerEvent)=>{eventQueue.EnqueueEvent(new GameClickEvent(event, resources.Rendering.canvasElement, resources.Rendering.Camera))}
 
@@ -79,10 +88,17 @@ export function Initialization (resources: Resources) : GameContext {
     // would scroll on its own.
     const blurListener = ()=>{ReleaseAllKeys(resources.Input)}
 
+    // The game does not use the wheel, but the page underneath it does: without
+    // this, scrolling over the board scrolls the board off the screen. Only
+    // events over the canvas reach here, so the rest of the page still scrolls.
+    // Must be non-passive or preventDefault is ignored.
+    const wheelListener = (event: WheelEvent)=>{event.preventDefault()}
+
     resources.Rendering.canvasElement.addEventListener("keydown", keyDownListener)
     resources.Rendering.canvasElement.addEventListener("keyup", keyUpListener)
     resources.Rendering.canvasElement.addEventListener("blur", blurListener)
     resources.Rendering.canvasElement.addEventListener("pointerdown", clickEventListener)
+    resources.Rendering.canvasElement.addEventListener("wheel", wheelListener, { passive: false })
 
     const player = new EntityBuilder(registry)
         .AddPosition(new Position(50, 50))
@@ -112,6 +128,7 @@ export function Initialization (resources: Resources) : GameContext {
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("keyup", keyUpListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("blur", blurListener))
     disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("pointerdown", clickEventListener))
+    disposalFunctions.push(()=>resources.Rendering.canvasElement.removeEventListener("wheel", wheelListener))
 
     // The one time anything aims the camera at the player. From here it is the
     // keyboard's, and StreamChunks follows it rather than them.
@@ -131,6 +148,10 @@ export function GameLoop (registry : IRegistry, eventQueue : IEventQueue, Resour
     // now points, so the chunks it just scrolled onto exist by the time they are
     // drawn. Running it ahead of PanCamera would show a blank strip for a frame.
     StreamChunks(registry, Resources.World, Resources.Rendering.Camera)
+
+    // Immediately after streaming, which is the only point in the frame where
+    // the list of chunks it just loaded is still standing.
+    PopulateHerds(registry, Resources.World, Resources.Rendering.Camera, Resources.Random)
 
     HandleCollision(registry, eventQueue)
     
@@ -177,33 +198,3 @@ export function StartGame (canvasElement : HTMLCanvasElement) : IDispose {
         Teardown(context.disposalFunctions)
     }
 }
-
-document.addEventListener("DOMContentLoaded", ()=>{
-    const gameContainer = document.getElementById("GameContainer") as HTMLElement | null
-    if (gameContainer === null) throw new Error("Could not find game html element!")
-
-    const canvas = document.createElement("canvas")
-
-    // The backing store is the game's native resolution, not the container's
-    // size. CSS scales the result up for display, and GameClickEvent scales
-    // clicks back down. Sizing from the container would tie the number of
-    // drawable pixels to the layout -- and #GameContainer has no height of its
-    // own, so clientHeight is 0 and nothing could be drawn at all.
-    canvas.width = GameWidth * TileSizePixels
-    canvas.height = GameWidth * TileSizePixels
-    canvas.id = "game"
-    canvas.tabIndex = 0
-    gameContainer.append(canvas)
-
-    const stopGame = StartGame(canvas);
-    
-    canvas.focus();
-
-    const unloadEventListener = ()=>{
-        stopGame()
-        gameContainer.removeChild(canvas)
-        window.removeEventListener("beforeunload", unloadEventListener)
-    }
-
-    window.addEventListener("beforeunload", unloadEventListener);
-})

@@ -27,6 +27,11 @@ const ChunkRadius = Math.floor(ChunkGridWidth / 2)
  * map are all just "which chunks are missing, and which are no longer wanted".
  */
 export function StreamChunks (registry : IRegistry, world : WorldStreamingResources, camera : Camera) {
+    // Before the early-out, not after: on the frames this system does nothing,
+    // it has still loaded no chunks, and leaving the previous tick's list
+    // standing would have SpawnHerds populate the same ground again.
+    world.chunksLoadedThisTick.length = 0
+
     // Centred on the viewport rather than the player, because the camera is free
     // to pan away from them. Loading around the player instead would leave the
     // panned-to part of the world blank -- and with a 3x3 buffer of 50-tile
@@ -61,7 +66,7 @@ export function StreamChunks (registry : IRegistry, world : WorldStreamingResour
 
             if (liveChunks.has(key)) continue
 
-            CreateChunkEntity(registry, world, chunkX, chunkY, key)
+            world.chunksLoadedThisTick.push(CreateChunkEntity(registry, world, chunkX, chunkY, key))
         }
     }
 
@@ -75,18 +80,19 @@ export function StreamChunks (registry : IRegistry, world : WorldStreamingResour
     world.lastCenterChunkY = centerChunkY
 }
 
-function CreateChunkEntity (registry : IRegistry, world : WorldStreamingResources, chunkX : number, chunkY : number, key : string) {
+function CreateChunkEntity (registry : IRegistry, world : WorldStreamingResources, chunkX : number, chunkY : number, key : string) : Entity {
     const cached = world.recentChunkCache.get(key)
 
     if (cached !== undefined) world.recentChunkCache.delete(key)
 
     const terrain = cached ?? GenerateChunk(chunkX, chunkY, world.noiseGenerator)
 
-    new EntityBuilder(registry)
+    return new EntityBuilder(registry)
         .AddPosition(new Position(chunkX * ChunkWidth, chunkY * ChunkWidth))
         .AddLayer(new Layer(BackgroundLayer))
         .AddMultiTileRepresentation(terrain)
         .AddChunkCoordinate(new ChunkCoordinate(chunkX, chunkY))
+        .GetEntity()
 }
 
 function RetireChunkEntity (registry : IRegistry, world : WorldStreamingResources, entity : Entity, key : string) {

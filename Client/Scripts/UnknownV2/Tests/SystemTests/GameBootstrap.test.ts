@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { GameWidth } from "../../Configuration/GameConstants.ts";
 import { CharacterRepresentation, TileSizePixels } from "../../Configuration/DisplayConstants.ts";
 
@@ -30,21 +30,29 @@ let canvas : HTMLCanvasElement;
 beforeAll(async () => {
   InstallCanvasContextStub();
 
-  document.body.innerHTML = `<div id="GameContainer"></div>`;
+  // Game.ts is side-effect free: the two callers that boot it -- game.html for
+  // the standalone harness and WebPlugins/UnknownV2/UnknownV2Model.ts for the
+  // site -- each build the canvas at the game's native resolution and hand it to
+  // StartGame. This mirrors what they do.
+  //
+  // The regression that shape exists for: sizing from the container element gave
+  // a clientHeight of 0, so the backing store had no pixels and every frame was
+  // blank no matter what the renderer did.
+  canvas = document.createElement("canvas");
+  canvas.width = NativeResolution;
+  canvas.height = NativeResolution;
+  document.body.appendChild(canvas);
 
-  // Importing Game.ts registers its DOMContentLoaded handler; dispatching the
-  // event is what actually boots the game, exactly as the browser does.
-  await import("../../Game.ts");
-  document.dispatchEvent(new Event("DOMContentLoaded"));
-
-  canvas = document.getElementById("game") as HTMLCanvasElement;
-
-  // One frame. requestAnimationFrame is async in happy-dom, so drive the loop
-  // directly rather than waiting on it.
-  const { GameLoop, Initialization } = await import("../../Game.ts");
+  const { GameLoop, Initialization, StartGame } = await import("../../Game.ts");
   const { Resources, RenderingResources } = await import("../../Contracts/SystemResources.ts");
   const { CreateWorldStreamingResources } = await import("../../Systems.World/CreateWorldStreamingResources.ts");
 
+  // Boot through the real entry point, then stop it again -- this is what a
+  // caller gets, and leaving the loop running would leak into later tests.
+  StartGame(canvas)();
+
+  // One frame. requestAnimationFrame is async in happy-dom, so drive the loop
+  // directly rather than waiting on it.
   const resources = new Resources(new RenderingResources(canvas), CreateWorldStreamingResources());
   const context = Initialization(resources);
 
@@ -53,15 +61,63 @@ beforeAll(async () => {
 });
 
 describe("canvas sizing", () => {
-  it("creates the canvas", () => expect(canvas).not.toBe(null));
-
-  // The regression this file exists for: sizing from #GameContainer gave a
-  // clientHeight of 0, so the backing store had no pixels and every frame was
-  // blank no matter what the renderer did.
   it("has a non-zero backing store", () => expect(canvas.width * canvas.height).toBeGreaterThan(0));
   it("is the game's native width", () => expect(canvas.width).toBe(NativeResolution));
   it("is the game's native height", () => expect(canvas.height).toBe(NativeResolution));
   it("is square", () => expect(canvas.width).toBe(canvas.height));
+});
+
+describe("StartGame", () => {
+  // The canvas has to be focusable or its keydown listeners never fire, which is
+  // what leaves camera panning dead on the embedded page.
+  it("makes the canvas focusable", () => expect(canvas.tabIndex).toBeGreaterThanOrEqual(0));
+});
+
+// Embedded in the site the game sits on a scrollable page, and both the wheel
+// and the arrow keys scroll it by default -- so panning, or any scroll over the
+// board, used to slide the game off the screen mid-play.
+describe("page scrolling over the canvas", () => {
+  let embeddedCanvas : HTMLCanvasElement;
+  let stopGame : () => void;
+
+  beforeAll(async () => {
+    const { StartGame } = await import("../../Game.ts");
+
+    embeddedCanvas = document.createElement("canvas");
+    embeddedCanvas.width = NativeResolution;
+    embeddedCanvas.height = NativeResolution;
+    document.body.appendChild(embeddedCanvas);
+
+    stopGame = StartGame(embeddedCanvas);
+  });
+
+  afterAll(() => { stopGame(); embeddedCanvas.remove(); });
+
+  const dispatchKeyDown = (code : string, init : KeyboardEventInit = {}) => {
+    const keyEvent = new KeyboardEvent("keydown", { code, cancelable: true, ...init });
+    embeddedCanvas.dispatchEvent(keyEvent);
+    return keyEvent;
+  };
+
+  it("swallows the wheel", () => {
+    const wheelEvent = new WheelEvent("wheel", { cancelable: true, deltaY: 120 });
+    embeddedCanvas.dispatchEvent(wheelEvent);
+    expect(wheelEvent.defaultPrevented).toBe(true);
+  });
+
+  it("swallows the arrow pan keys", () =>
+    expect(dispatchKeyDown("ArrowDown").defaultPrevented).toBe(true));
+
+  it("swallows the WASD pan keys", () =>
+    expect(dispatchKeyDown("KeyS").defaultPrevented).toBe(true));
+
+  // Anything the game does not pan with belongs to the browser and the page.
+  it("leaves other keys alone", () =>
+    expect(dispatchKeyDown("KeyQ").defaultPrevented).toBe(false));
+
+  // Ctrl+arrow and friends are browser shortcuts; PanCamera ignores them too.
+  it("leaves modified pan keys alone", () =>
+    expect(dispatchKeyDown("ArrowDown", { ctrlKey: true }).defaultPrevented).toBe(false));
 });
 
 describe("the first frame", () => {

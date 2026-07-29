@@ -5,9 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unknown v2</title>
     <link href="./Assets/Game.css" rel="stylesheet">
-    <script type="module" src="./Game.js"></script>
 </head>
 <body>
     <div id="GameContainer"></div>
+
+    <!-- Loads the compiled ESM output of Game.ts. Build the TypeScript first
+         (e.g. `tsc`) so that Game.js exists next to this file. Game.ts itself is
+         side-effect free so the SPA plugin can import it; the bootstrap lives here. -->
+    <script type="module">
+        import { StartGame } from "./Game.js";
+        import { TileSizePixels } from "./Configuration/DisplayConstants.js";
+        import { GameWidth } from "./Configuration/GameConstants.js";
+
+        const gameContainer = document.getElementById("GameContainer");
+        if (gameContainer === null) throw new Error("Could not find game html element!");
+
+        const canvas = document.createElement("canvas");
+
+        // The backing store is the game's native resolution, not the container's
+        // size. CSS scales the result up for display, and GameClickEvent scales
+        // clicks back down. Sizing from the container would tie the number of
+        // drawable pixels to the layout -- and #GameContainer has no height of its
+        // own, so clientHeight is 0 and nothing could be drawn at all.
+        canvas.width = GameWidth * TileSizePixels;
+        canvas.height = GameWidth * TileSizePixels;
+        canvas.id = "game";
+        canvas.tabIndex = 0;
+        gameContainer.append(canvas);
+
+        const stopGame = StartGame(canvas);
+
+        canvas.focus();
+
+        const unloadEventListener = () => {
+            stopGame();
+            gameContainer.removeChild(canvas);
+            window.removeEventListener("beforeunload", unloadEventListener);
+        };
+
+        window.addEventListener("beforeunload", unloadEventListener);
+    </script>
 </body>
 </html>
