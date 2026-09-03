@@ -1,18 +1,19 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { GameWidth } from "../../Configuration/GameConstants.ts";
 import { ChunkWidth, MaxHerdSize, MaxLiveHerds, MinHerdSize } from "../../Configuration/WorldConstants.ts";
 import type { Entity } from "../../Contracts/Components/Entity.ts";
 import { HerdOwner } from "../../Contracts/Components/HerdOwner.ts";
 import { Owns } from "../../Contracts/Components/Owns.ts";
 import { Position } from "../../Contracts/Components/Position.ts";
-import { Camera, WorldStreamingResources } from "../../Contracts/SystemResources.ts";
+import { WorldStreamingResources } from "../../Contracts/SystemResources.ts";
 import type { IRandomNumberGenerator } from "../../Interfaces/IRandomNumberGenerator.ts";
 import { LinearCongruentialGenerator } from "../../Libraries/Random/LinearCongruentialGenerator.ts";
 import { InMemoryKeyValueStore } from "../../Libraries/Storage/InMemoryKeyValueStore.ts";
 import type { GlobalRegistry } from "../../Systems.Framework/Registry.ts";
-import { PopulateHerds } from "../../Systems.World/PopulateHerds.ts";
-import { StreamChunks } from "../../Systems.World/StreamChunks.ts";
-import { BuildTestRegistry } from "../TestHelpers/BuildTestRegistry.ts";
+import { PopulateHerds } from "../../Systems.Gameloop/PopulateHerds.ts";
+import { StreamChunks } from "../../Systems.Gameloop/StreamChunks.ts";
+import { AddCameraViewing, BuildTestRegistry } from "../TestHelpers/BuildTestRegistry.ts";
+import { FindCameraPosition } from "../../Utilities/CameraUtilities.ts";
 
 /** Terrain noise that puts the whole world in one band. */
 function FlatNoise(value : number) {
@@ -76,20 +77,33 @@ function AddHerdAt(registry : GlobalRegistry, x : number, y : number) : Entity {
   return owner;
 }
 
+/**
+ * Adds the camera with the viewport's top-left corner on the given world tile,
+ * and hands back its live Position so a test can pan it.
+ *
+ * Stated as the corner rather than the centre because these tests care whether
+ * a spawn landed on screen, and the viewport's edges are what decide that.
+ */
+function ViewOrigin(registry : GlobalRegistry, originX : number, originY : number) : Position {
+  AddCameraViewing(registry, originX, originY);
+
+  return FindCameraPosition(registry)!;
+}
+
 /** Streams the initial buffer, leaving its chunks queued for population. */
-function StreamInitialChunks(registry : GlobalRegistry, world : WorldStreamingResources, camera : Camera) {
-  StreamChunks(registry, world, camera);
+function StreamInitialChunks(registry : GlobalRegistry, world : WorldStreamingResources) {
+  StreamChunks(registry, world);
 }
 
 describe("populating streamed chunks", () => {
   it("spawns herds on newly loaded land", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
+    StreamInitialChunks(registry, world);
     // Every roll succeeds, but the cap still applies.
-    PopulateHerds(registry, world, camera, CyclingRandom(0));
+    PopulateHerds(registry, world, CyclingRandom(0));
 
     expect(HerdOwners(registry).length).toBeGreaterThan(0);
   });
@@ -97,16 +111,16 @@ describe("populating streamed chunks", () => {
   it("spawns nothing when no chunks were loaded this tick", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0));
 
     const afterFirst = HerdOwners(registry).length;
 
     // The camera has not moved, so StreamChunks early-outs and loads nothing.
-    StreamChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0));
+    StreamChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0));
 
     expect(HerdOwners(registry).length).toBe(afterFirst);
   });
@@ -117,13 +131,13 @@ describe("populating streamed chunks", () => {
     // ground every frame until the cap hid the leak.
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0));
 
     for (let tick = 0; tick < 5; tick++) {
-      StreamChunks(registry, world, camera);
+      StreamChunks(registry, world);
 
       expect(world.chunksLoadedThisTick.length).toBe(0);
     }
@@ -132,11 +146,11 @@ describe("populating streamed chunks", () => {
   it("respects the spawn chance", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
+    StreamInitialChunks(registry, world);
     // Every roll is a certain miss.
-    PopulateHerds(registry, world, camera, CyclingRandom(0.999));
+    PopulateHerds(registry, world, CyclingRandom(0.999));
 
     expect(HerdOwners(registry)).toEqual([]);
   });
@@ -146,10 +160,10 @@ describe("populating streamed chunks", () => {
     // search has to give up rather than drop one in the sea.
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllWater);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0));
 
     expect(HerdOwners(registry)).toEqual([]);
   });
@@ -160,10 +174,10 @@ describe("populating streamed chunks", () => {
     // what gets checked.
     const world = BuildWorld({GetNoise: (x : number) => (x < 0 ? 0 : 0.99)});
     const registry = BuildTestRegistry();
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, new LinearCongruentialGenerator(7));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, new LinearCongruentialGenerator(7));
 
     const anchors = HerdOwners(registry).map((owner) => registry.GetComponent(owner, Position)!);
 
@@ -176,10 +190,10 @@ describe("populating streamed chunks", () => {
     // avoid; off-screen ground is fair game.
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, new LinearCongruentialGenerator(3));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, new LinearCongruentialGenerator(3));
 
     HerdOwners(registry).forEach((owner) => {
       const anchor = registry.GetComponent(owner, Position)!;
@@ -192,10 +206,10 @@ describe("populating streamed chunks", () => {
   it("gives each herd a size within the configured range", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, new LinearCongruentialGenerator(11));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, new LinearCongruentialGenerator(11));
 
     const owners = HerdOwners(registry);
 
@@ -214,10 +228,10 @@ describe("populating streamed chunks", () => {
     // one tick an exact copy of its neighbour.
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, new LinearCongruentialGenerator(5));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, new LinearCongruentialGenerator(5));
 
     const owners = HerdOwners(registry);
 
@@ -245,14 +259,14 @@ describe("bounding the herd population", () => {
   it("never leaves more than the cap alive", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllLand);
-    const camera = new Camera(0, 0);
+    const camera = ViewOrigin(registry, 0, 0);
 
     // Walk a long way, streaming and populating the whole distance.
     for (let step = 0; step < 30; step++) {
-      camera.worldOriginX += ChunkWidth;
+      camera.x += ChunkWidth;
 
-      StreamChunks(registry, world, camera);
-      PopulateHerds(registry, world, camera, new LinearCongruentialGenerator(step + 1));
+      StreamChunks(registry, world);
+      PopulateHerds(registry, world, new LinearCongruentialGenerator(step + 1));
 
       expect(HerdOwners(registry).length).toBeLessThanOrEqual(MaxLiveHerds);
     }
@@ -261,7 +275,7 @@ describe("bounding the herd population", () => {
   it("retires the furthest herd first", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllWater);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
     const near = AddHerdAt(registry, 50, 50);
     const far : Entity[] = [];
@@ -270,8 +284,8 @@ describe("bounding the herd population", () => {
       far.push(AddHerdAt(registry, 5000 + index * 100, 50));
     }
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0.999));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0.999));
 
     expect(registry.IsAlive(near)).toBe(true);
     // The single most distant one goes, and only it: the population was one
@@ -285,7 +299,7 @@ describe("bounding the herd population", () => {
     // would delete the herd standing next to the player.
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllWater);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
     const roamer = AddHerdAt(registry, 9000, 9000);
 
@@ -297,8 +311,8 @@ describe("bounding the herd population", () => {
 
     for (let index = 0; index < MaxLiveHerds; index++) AddHerdAt(registry, 500 + index, 500);
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0.999));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0.999));
 
     expect(registry.IsAlive(roamer)).toBe(true);
   });
@@ -306,7 +320,7 @@ describe("bounding the herd population", () => {
   it("takes a retired herd's animals with it", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllWater);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
     AddHerdAt(registry, 50, 50);
 
@@ -316,8 +330,8 @@ describe("bounding the herd population", () => {
 
     const members = doomed.flatMap((herd) => MembersOf(registry, herd));
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0.999));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0.999));
 
     const survivingMembers = members.filter((member) => registry.IsAlive(member));
     const survivingHerds = doomed.filter((herd) => registry.IsAlive(herd));
@@ -329,12 +343,12 @@ describe("bounding the herd population", () => {
   it("leaves a population under the cap untouched", () => {
     const registry = BuildTestRegistry();
     const world = BuildWorld(AllWater);
-    const camera = new Camera(0, 0);
+    ViewOrigin(registry, 0, 0);
 
     const herds = [AddHerdAt(registry, 9000, 9000), AddHerdAt(registry, 50, 50)];
 
-    StreamInitialChunks(registry, world, camera);
-    PopulateHerds(registry, world, camera, CyclingRandom(0.999));
+    StreamInitialChunks(registry, world);
+    PopulateHerds(registry, world, CyclingRandom(0.999));
 
     expect(herds.every((herd) => registry.IsAlive(herd))).toBe(true);
   });

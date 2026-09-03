@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { GenerateChunk, BandNoiseToTerrain, ShadeNoiseToPaletteIndex } from "../../Systems.World/GenerateChunk.ts";
+﻿import { describe, it, expect } from "vitest";
+import {
+  GenerateChunk, BandNoiseToTerrain, ShadeNoiseToPaletteIndex, TerrainKindAtWorldTile, TerrainKindOfEntity,
+  TerrainNoiseAtWorldTile, IsPassableTerrain, IsDrinkableWater, IsForageGround, FindNearestTile
+} from "../../Utilities/TerrainUtilities.ts";
+import { GoalScanStepTiles, GoalScanMaxRadiusTiles, MaxGoalScanProbes } from "../../Configuration/HerdConstants.ts";
+import { WorldStreamingResources } from "../../Contracts/SystemResources.ts";
+import { Position } from "../../Contracts/Components/Position.ts";
+import { CreateDefaultKeyValueStore } from "../../Libraries/Storage/CreateDefaultKeyValueStore.ts";
+import { EntityBuilder } from "../../Systems.Framework/EntityBuilder.ts";
+import { BuildTestRegistry } from "../TestHelpers/BuildTestRegistry.ts";
 import { ChunkWidth, GradientGridWidth, NoiseScale, NoiseOctaves, NoisePersistence, NoiseLacunarity, NoiseGain, WorldSeed } from "../../Configuration/WorldConstants.ts";
 import { TerrainBands, TerrainKind, TerrainKindOfPaletteIndex, TerrainPalette, TerrainShadeCount, TerrainThresholds } from "../../Configuration/DisplayConstants.ts";
 import { PerlinNoise } from "../../Libraries/Noise/PerlinNoise.ts";
@@ -135,7 +144,7 @@ describe("shading", () => {
 
   // The foot of a hill used to be a bright yellow tan, which read as a change of
   // lighting rather than a change of ground. It has to be brown, and brown means
-  // red leading green — the tan had them level.
+  // red leading green â€” the tan had them level.
   it("hill starts brown rather than yellow", () => {
     const { low } = BandEnds(TerrainKind.Hill);
 
@@ -260,5 +269,249 @@ describe("terrain variety", () => {
     for (let chunkX = -2; chunkX <= 2; chunkX++) Array.from(GenerateChunk(chunkX, 0, BuildNoise()).paletteIndices).forEach((index) => kinds.add(index));
 
     expect(kinds.size).toBeGreaterThan(1);
+  });
+});
+
+/** World resources backed by the real noise field, with no storage behind them. */
+const BuildWorld = () => new WorldStreamingResources(BuildNoise(), CreateDefaultKeyValueStore(), WorldSeed);
+
+describe("asking what terrain is at a world tile", () => {
+  // The load-bearing invariant of the whole query: the answer it gives has to be
+  // the terrain that was actually drawn there. These are two separate routes
+  // through the same noise field, and nothing else would catch them drifting.
+  it("agrees with the chunk the renderer draws, tile for tile", () => {
+    const world = BuildWorld();
+
+    for (const [chunkX, chunkY] of [[0, 0], [3, -2], [-1, -1]] as const) {
+      const chunk = GenerateChunk(chunkX, chunkY, world.noiseGenerator);
+
+      for (let localY = 0; localY < ChunkWidth; localY++) {
+        for (let localX = 0; localX < ChunkWidth; localX++) {
+          const drawn = TerrainKindOfPaletteIndex(chunk.paletteIndices[localY * ChunkWidth + localX]!);
+          const queried = TerrainKindAtWorldTile(world, chunkX * ChunkWidth + localX, chunkY * ChunkWidth + localY);
+
+          expect(queried).toBe(drawn);
+        }
+      }
+    }
+  });
+
+  // The point of sampling noise rather than reading a chunk: only a 5x5 square
+  // of chunks is ever resident, and herds outlive the ground they spawned on.
+  it("answers for ground no chunk has ever covered", () => {
+    const world = BuildWorld();
+
+    expect(TerrainKindAtWorldTile(world, 900_000, -900_000)).toBeLessThan(TerrainBands.length);
+  });
+
+  it("always returns a real terrain kind", () => {
+    const world = BuildWorld();
+
+    for (let x = -200; x <= 200; x += 37) {
+      const kind = TerrainKindAtWorldTile(world, x, x);
+
+      expect(kind).toBeGreaterThanOrEqual(0);
+      expect(kind).toBeLessThan(TerrainBands.length);
+    }
+  });
+
+  // Positions are continuous once an entity is mid-step. Sampling the raw
+  // coordinate would read a different noise value than the tile drawn under it,
+  // so an animal could report water while standing on a grass glyph.
+  it("floors a fractional position onto the tile it is standing on", () => {
+    const world = BuildWorld();
+
+    expect(TerrainKindAtWorldTile(world, 10.4, 10.6)).toBe(TerrainKindAtWorldTile(world, 10, 10));
+    expect(TerrainKindAtWorldTile(world, 10.999, 10.999)).toBe(TerrainKindAtWorldTile(world, 10, 10));
+  });
+
+  it("floors towards negative infinity, matching every other tile mapping", () => {
+    const world = BuildWorld();
+
+    expect(TerrainKindAtWorldTile(world, -0.5, -0.5)).toBe(TerrainKindAtWorldTile(world, -1, -1));
+  });
+});
+
+describe("asking what terrain an entity is on", () => {
+  it("reports the terrain under the entity's position", () => {
+    const registry = BuildTestRegistry();
+    const world = BuildWorld();
+    const entity = new EntityBuilder(registry).AddPosition(new Position(137, -42)).GetEntity();
+
+    expect(TerrainKindOfEntity(registry, world, entity)).toBe(TerrainKindAtWorldTile(world, 137, -42));
+  });
+
+  it("follows the entity as it moves", () => {
+    const registry = BuildTestRegistry();
+    const world = BuildWorld();
+    const position = new Position(0, 0);
+    const entity = new EntityBuilder(registry).AddPosition(position).GetEntity();
+
+    position.x = 800;
+    position.y = 800;
+
+    expect(TerrainKindOfEntity(registry, world, entity)).toBe(TerrainKindAtWorldTile(world, 800, 800));
+  });
+
+  it("is undefined for an entity with no position", () => {
+    const registry = BuildTestRegistry();
+
+    expect(TerrainKindOfEntity(registry, BuildWorld(), registry.CreateEntity())).toBeUndefined();
+  });
+});
+
+describe("which ground an animal can use", () => {
+  /** A world whose every tile sits at one chosen height. */
+  const FlatWorld = (noise : number) => new WorldStreamingResources(FixedNoise(noise), CreateDefaultKeyValueStore(), WorldSeed);
+
+  /** Shallow water: between the ocean floor and the grass line. */
+  const ShallowWater = (TerrainThresholds.Ocean + TerrainThresholds.Grassland) / 2;
+  const DeepWater = TerrainThresholds.Ocean / 2;
+
+  it("mountains are impassable", () => {
+    expect(IsPassableTerrain(FlatWorld(Within(TerrainKind.Mountain, 0.5)), 0, 0)).toBe(false);
+  });
+
+  it("deep water is impassable", () => {
+    expect(IsPassableTerrain(FlatWorld(DeepWater), 0, 0)).toBe(false);
+  });
+
+  it("shallow water is passable, so an animal can stand in it to drink", () => {
+    // The whole reason the ocean threshold exists rather than "all water is
+    // impassable": drinking means standing in the water.
+    expect(IsPassableTerrain(FlatWorld(ShallowWater), 0, 0)).toBe(true);
+  });
+
+  it("grass and hills are passable", () => {
+    expect(IsPassableTerrain(FlatWorld(Within(TerrainKind.Grass, 0.5)), 0, 0)).toBe(true);
+    expect(IsPassableTerrain(FlatWorld(Within(TerrainKind.Hill, 0.5)), 0, 0)).toBe(true);
+  });
+
+  it("pins the ocean boundary at exactly the threshold", () => {
+    // Strictly greater-than, matching how every other terrain boundary in the
+    // game compares. A tile sitting exactly on the threshold is ocean.
+    expect(IsPassableTerrain(FlatWorld(TerrainThresholds.Ocean), 0, 0)).toBe(false);
+    expect(IsPassableTerrain(FlatWorld(TerrainThresholds.Ocean + Nudge), 0, 0)).toBe(true);
+  });
+
+  it("pins the mountain boundary at exactly the threshold", () => {
+    expect(IsPassableTerrain(FlatWorld(TerrainThresholds.Mountain), 0, 0)).toBe(true);
+    expect(IsPassableTerrain(FlatWorld(TerrainThresholds.Mountain + Nudge), 0, 0)).toBe(false);
+  });
+
+  it("only shallow water is drinkable", () => {
+    expect(IsDrinkableWater(FlatWorld(ShallowWater), 0, 0)).toBe(true);
+    expect(IsDrinkableWater(FlatWorld(DeepWater), 0, 0)).toBe(false);
+    expect(IsDrinkableWater(FlatWorld(Within(TerrainKind.Grass, 0.5)), 0, 0)).toBe(false);
+  });
+
+  it("only grass is forage", () => {
+    expect(IsForageGround(FlatWorld(Within(TerrainKind.Grass, 0.5)), 0, 0)).toBe(true);
+    expect(IsForageGround(FlatWorld(Within(TerrainKind.Hill, 0.5)), 0, 0)).toBe(false);
+    expect(IsForageGround(FlatWorld(ShallowWater), 0, 0)).toBe(false);
+  });
+
+  it("agrees with the band the renderer would draw", () => {
+    // Passability is derived from thresholds and glyphs from bands. If those two
+    // ever disagree, an animal refuses to walk onto ground that looks walkable.
+    const world = BuildWorld();
+
+    for (let tile = 0; tile < 400; tile++) {
+      const kind = TerrainKindAtWorldTile(world, tile, tile * 3);
+      const passable = IsPassableTerrain(world, tile, tile * 3);
+
+      if (kind === TerrainKind.Mountain) expect(passable).toBe(false);
+      if (kind === TerrainKind.Grass || kind === TerrainKind.Hill) expect(passable).toBe(true);
+      // Water may be either, which is exactly what the ocean threshold adds.
+    }
+  });
+
+  it("reads the noise field at the floored tile", () => {
+    // Positions are fractional mid-step, and the tile drawn at x = 10 is the one
+    // the animal is standing on even when its position says 10.4.
+    const world = BuildWorld();
+
+    expect(TerrainNoiseAtWorldTile(world, 10.4, -3.9)).toBe(TerrainNoiseAtWorldTile(world, 10, -4));
+  });
+});
+
+describe("scanning outward for a resource", () => {
+  const ScanFor = (
+    world : WorldStreamingResources,
+    Matches : (world : WorldStreamingResources, x : number, y : number) => boolean,
+    fromX = 0, fromY = 0
+  ) => FindNearestTile(world, fromX, fromY, Matches, GoalScanStepTiles, GoalScanMaxRadiusTiles, MaxGoalScanProbes);
+
+  /** Water in a vertical strip, dry land everywhere else. */
+  const StripWorld = (minX : number, maxX : number) => new WorldStreamingResources(
+    { GetNoise: (x : number) => (x >= minX && x <= maxX ? (TerrainThresholds.Ocean + TerrainThresholds.Grassland) / 2 : Within(TerrainKind.Grass, 0.5)) },
+    CreateDefaultKeyValueStore(), WorldSeed
+  );
+
+  it("returns the tile underfoot when it already matches", () => {
+    // A herd standing in the water it wants has arrived, and must not be sent
+    // looking for a different puddle.
+    const found = ScanFor(StripWorld(-5, 5), IsDrinkableWater);
+
+    expect(found).toEqual(new Position(0, 0));
+  });
+
+  it("finds a resource off to one side", () => {
+    const found = ScanFor(StripWorld(40, 60), IsDrinkableWater);
+
+    expect(found).toBeDefined();
+    expect(IsDrinkableWater(StripWorld(40, 60), found!.x, found!.y)).toBe(true);
+  });
+
+  it("never returns a tile failing its own predicate", () => {
+    const world = BuildWorld();
+
+    for (let origin = 0; origin < 40; origin++) {
+      const found = FindNearestTile(world, origin * 17, origin * 11, IsDrinkableWater, GoalScanStepTiles, GoalScanMaxRadiusTiles, MaxGoalScanProbes);
+
+      if (found) expect(IsDrinkableWater(world, found.x, found.y)).toBe(true);
+    }
+  });
+
+  it("prefers a nearer resource to a further one", () => {
+    // Water on both sides, much closer to the east. Ring order is what makes the
+    // near one win; a filled-square scan would return whichever it hit first.
+    const world = new WorldStreamingResources(
+      { GetNoise: (x : number) => (x > 20 && x < 30) || (x > -120 && x < -110) ? (TerrainThresholds.Ocean + TerrainThresholds.Grassland) / 2 : Within(TerrainKind.Grass, 0.5) },
+      CreateDefaultKeyValueStore(), WorldSeed
+    );
+
+    const found = ScanFor(world, IsDrinkableWater);
+
+    expect(found).toBeDefined();
+    expect(found!.x).toBeGreaterThan(0);
+  });
+
+  it("gives up rather than scanning forever when there is no match", () => {
+    // An all-grass world has no water in it at all. The budget is what stops this
+    // from becoming a frame-long search every time a herd gets thirsty.
+    const found = ScanFor(new WorldStreamingResources(FixedNoise(Within(TerrainKind.Grass, 0.5)), CreateDefaultKeyValueStore(), WorldSeed), IsDrinkableWater);
+
+    expect(found).toBeUndefined();
+  });
+
+  it("stays within its probe budget", () => {
+    let probes = 0;
+    const world = new WorldStreamingResources(
+      { GetNoise: () => { probes++; return Within(TerrainKind.Grass, 0.5); } },
+      CreateDefaultKeyValueStore(), WorldSeed
+    );
+
+    FindNearestTile(world, 0, 0, IsDrinkableWater, GoalScanStepTiles, GoalScanMaxRadiusTiles, 200);
+
+    expect(probes).toBeLessThanOrEqual(200);
+  });
+
+  it("is deterministic", () => {
+    const world = BuildWorld();
+    const first = FindNearestTile(world, 500, 500, IsDrinkableWater, GoalScanStepTiles, GoalScanMaxRadiusTiles, MaxGoalScanProbes);
+    const second = FindNearestTile(world, 500, 500, IsDrinkableWater, GoalScanStepTiles, GoalScanMaxRadiusTiles, MaxGoalScanProbes);
+
+    expect(first).toEqual(second);
   });
 });

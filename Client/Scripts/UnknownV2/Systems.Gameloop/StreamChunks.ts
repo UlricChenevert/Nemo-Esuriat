@@ -1,15 +1,12 @@
-import { BackgroundLayer } from "../Configuration/DisplayConstants.ts";
 import { ChunkGridWidth, ChunkWidth, RecentChunkCacheSize } from "../Configuration/WorldConstants.ts";
 import { ChunkCoordinate, ChunkCoordinateKey } from "../Contracts/Components/ChunkCoordinate.ts";
 import type { Entity } from "../Contracts/Components/Entity.ts";
-import { Layer } from "../Contracts/Components/Layer.ts";
 import { MultiTileRepresentation } from "../Contracts/Components/MultiTileRepresentation.ts";
-import { Position } from "../Contracts/Components/Position.ts";
-import type { Camera, WorldStreamingResources } from "../Contracts/SystemResources.ts";
+import type { WorldStreamingResources } from "../Contracts/SystemResources.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { EntityBuilder } from "../Systems.Framework/EntityBuilder.ts";
-import { GenerateChunk } from "./GenerateChunk.ts";
-import { GameWidth } from "../Configuration/GameConstants.ts";
+import { FindCameraPosition } from "../Utilities/CameraUtilities.ts";
+import { GenerateChunk } from "../Utilities/TerrainUtilities.ts";
 
 /** How far the buffer extends from the centre chunk, in chunks. */
 const ChunkRadius = Math.floor(ChunkGridWidth / 2)
@@ -25,11 +22,15 @@ const ChunkRadius = Math.floor(ChunkGridWidth / 2)
  * silently dropped one of the two shifts. Reconciliation has no directional
  * cases at all: startup, a single step, a diagonal step, and a jump across the
  * map are all just "which chunks are missing, and which are no longer wanted".
+ *
+ * Finds the camera itself rather than being handed one. It runs every frame and
+ * the camera is an ordinary entity, so a parameter would only be the same lookup
+ * moved to the call site -- and one more thing GameLoop has to thread through.
  */
-export function StreamChunks (registry : IRegistry, world : WorldStreamingResources, camera : Camera) {
+export function StreamChunks (registry : IRegistry, world : WorldStreamingResources) {
     // Before the early-out, not after: on the frames this system does nothing,
     // it has still loaded no chunks, and leaving the previous tick's list
-    // standing would have SpawnHerds populate the same ground again.
+    // standing would have PopulateHerds populate the same ground again.
     world.chunksLoadedThisTick.length = 0
 
     // Centred on the viewport rather than the player, because the camera is free
@@ -37,13 +38,19 @@ export function StreamChunks (registry : IRegistry, world : WorldStreamingResour
     // panned-to part of the world blank -- and with a 3x3 buffer of 50-tile
     // chunks against a 100-tile viewport, that shows up within one screen of
     // panning.
-    const centerX = camera.worldOriginX + GameWidth / 2
-    const centerY = camera.worldOriginY + GameWidth / 2
+    //
+    // The camera's position IS the view centre, so there is no half-viewport
+    // arithmetic to get wrong here.
+    const cameraPosition = FindCameraPosition(registry)
+
+    // No camera means no view to load terrain around. Terrain is regenerated
+    // from the seed on demand, so nothing is lost by waiting for one.
+    if (cameraPosition === undefined) return
 
     // Math.floor rather than truncation, so world x = -1 is chunk -1 rather than
     // sharing chunk 0 with x = 1 and making the origin chunk twice as wide.
-    const centerChunkX = Math.floor(centerX / ChunkWidth)
-    const centerChunkY = Math.floor(centerY / ChunkWidth)
+    const centerChunkX = Math.floor(cameraPosition.x / ChunkWidth)
+    const centerChunkY = Math.floor(cameraPosition.y / ChunkWidth)
 
     // The camera stays inside one chunk for tens of frames at a time, so this
     // early-out is what keeps streaming off the per-frame cost sheet.
@@ -80,6 +87,13 @@ export function StreamChunks (registry : IRegistry, world : WorldStreamingResour
     world.lastCenterChunkY = centerChunkY
 }
 
+/**
+ * Brings one chunk into the world, generating its terrain only if the cache does
+ * not already have it.
+ *
+ * What a chunk entity is made of lives in EntityBuilder.MakeTerrainChunk; this
+ * only decides that one should exist and where its tiles come from.
+ */
 function CreateChunkEntity (registry : IRegistry, world : WorldStreamingResources, chunkX : number, chunkY : number, key : string) : Entity {
     const cached = world.recentChunkCache.get(key)
 
@@ -88,10 +102,7 @@ function CreateChunkEntity (registry : IRegistry, world : WorldStreamingResource
     const terrain = cached ?? GenerateChunk(chunkX, chunkY, world.noiseGenerator)
 
     return new EntityBuilder(registry)
-        .AddPosition(new Position(chunkX * ChunkWidth, chunkY * ChunkWidth))
-        .AddLayer(new Layer(BackgroundLayer))
-        .AddMultiTileRepresentation(terrain)
-        .AddChunkCoordinate(new ChunkCoordinate(chunkX, chunkY))
+        .MakeTerrainChunk(chunkX, chunkY, terrain)
         .GetEntity()
 }
 

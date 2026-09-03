@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { PlayerLayer } from "../../Configuration/DisplayConstants.ts";
 import type { Entity } from "../../Contracts/Components/Entity.ts";
 import { Layer } from "../../Contracts/Components/Layer.ts";
@@ -6,6 +6,11 @@ import { Position } from "../../Contracts/Components/Position.ts";
 import { SelectionState } from "../../Contracts/Components/SelectionState.ts";
 import { TargetLocation } from "../../Contracts/Components/TargetLocation.ts";
 import { GameClickEvent } from "../../Contracts/Events/GameClickEvent.ts";
+import { ClickListener } from "../../Contracts/Components/ClickListener.ts";
+import { ClickGesture } from "../../Contracts/Actions/GameActions.ts";
+import { InputResources } from "../../Contracts/SystemResources.ts";
+import { PushInputLayer } from "../../Systems.Framework/InputLayerStack.ts";
+import { ResolveClickTargets } from "../../Systems.Gameloop/ResolveClickTargets.ts";
 import { MovementFlag } from "../../Contracts/Tags/MovementFlag.ts";
 import { TimeResources } from "../../Contracts/SystemResources.ts";
 import { LinkedList } from "../../Libraries/FastList/FastList.ts";
@@ -14,24 +19,38 @@ import { EventQueue } from "../../Systems.Framework/EventQueue.ts";
 import type { GlobalRegistry } from "../../Systems.Framework/Registry.ts";
 import { HandleInputEvents } from "../../Systems.Gameloop/HandleInputEvents.ts";
 import { HandleMovement } from "../../Systems.Gameloop/HandleMovement.ts";
-import { BuildTestRegistry } from "../TestHelpers/BuildTestRegistry.ts";
+import { AddCameraViewing, BuildTestRegistry } from "../TestHelpers/BuildTestRegistry.ts";
 
 /**
- * GameClickEvent derives its position from a MouseEvent, a canvas and a camera,
- * none of which exist here. The systems only ever read `position`, so the event is
- * built on the prototype directly -- faking a bounding rectangle would test
- * WorldTileOfScreenTile rather than the click handling this file is about.
+ * A click on the given WORLD tile.
+ *
+ * GameClickEvent derives its screen tile from a MouseEvent and a canvas, neither
+ * of which exists here, so the event is built on the prototype directly --
+ * faking a bounding rectangle would test the pixel maths rather than the click
+ * handling this file is about.
+ *
+ * The world the tests build looks at the origin, where screen coordinates equal
+ * world coordinates, so the screen tile written here is also the world tile
+ * HandleInputEvents will resolve it to. Whether that resolution is correct at
+ * other camera positions is CameraUtilities' round-trip test, not this file's.
  */
 function ClickAt(x : number, y : number) : GameClickEvent {
-  return Object.assign(Object.create(GameClickEvent.prototype) as GameClickEvent, { position: new Position(x, y) });
+  return Object.assign(Object.create(GameClickEvent.prototype) as GameClickEvent, { screenX: x, screenY: y });
 }
 
 /** A player owning one selectable, moveable character at the given tile. */
 function BuildWorld(characterX = 10, characterY = 10, speed = 1) {
   const registry = BuildTestRegistry();
 
+  AddCameraViewing(registry, 0, 0);
+
+  // Clicks reach a system through the input layer stack now, not off the queue, so the
+  // player has to hold a listener claiming the plain gesture exactly as it does in Game.
+  const worldInputLayer = PushInputLayer(registry, new InputResources());
+
   const player = new EntityBuilder(registry)
     .AddTags(false, false, true, false)
+    .AddClickListener(worldInputLayer, ClickGesture.Plain)
     .GetEntity();
 
   const character = new EntityBuilder(registry)
@@ -45,11 +64,26 @@ function BuildWorld(characterX = 10, characterY = 10, speed = 1) {
   return { registry, player, character };
 }
 
-/** Runs one frame of input handling for the given clicks. */
+/**
+ * Runs one frame of input handling for the given clicks.
+ *
+ * Routes them through ResolveClickTargets first, exactly as the gameplay layer does, so
+ * these tests exercise the real path from a queued click to the player's mailbox rather
+ * than reaching past it.
+ */
 function Click(registry : GlobalRegistry, ...clicks : GameClickEvent[]) {
   const queue = new EventQueue(new LinkedList());
   clicks.forEach((click) => queue.EnqueueEvent(click));
 
+  // The stack the player's listener was registered against, recovered rather than passed
+  // in so the dozen call sites below stay as they were.
+  const input = new InputResources();
+
+  registry.ForEachEntityWith([ClickListener], (_entity, listener) => {
+    if (!input.layerStack.includes(listener.layer)) input.layerStack.push(listener.layer);
+  });
+
+  ResolveClickTargets(registry, queue, input);
   HandleInputEvents(registry, queue);
 
   return queue;

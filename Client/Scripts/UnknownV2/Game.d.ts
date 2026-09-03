@@ -11,7 +11,15 @@ export interface GameContext {
     disposalFunctions: IDispose[];
 }
 export declare function Initialization(resources: Resources): GameContext;
-export declare function GameLoop(registry: IRegistry, eventQueue: IEventQueue, Resources: Resources): void;
+/**
+ * Runs one frame of whichever mode is on top of the schedule.
+ *
+ * The loop used to be this list, written out. It is a stack of lists now
+ * because "what runs" turned out to be a thing the game needed to change at
+ * runtime -- pausing, menus, and any mode that is gameplay minus a system --
+ * and a fixed sequence of calls can only be changed by editing it.
+ */
+export declare function GameLoop(registry: IRegistry, eventQueue: IEventQueue, resources: Resources): void;
 export declare function Teardown(disposalFunctions: IDispose[]): void;
 /**
  * Bootstraps the game onto a canvas and drives it with requestAnimationFrame.

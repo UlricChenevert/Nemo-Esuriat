@@ -1,7 +1,21 @@
 import type { Color } from "./Color.ts";
 
 export class Representation {
-    constructor (public model : string, public color : Color) {}
+    /**
+     * @param fillsCell Paint the whole tile in `color` instead of drawing `model`.
+     *
+     * A glyph cannot fill its cell. Monospace advance width is around 0.6em, so
+     * even the full-block character covers roughly six tenths of a tile's width
+     * and a "solid" panel built from them comes out as vertical stripes. Sizing
+     * the font up until the block did span the cell would make every letter
+     * overflow into the rows above and below.
+     *
+     * So a solid tile is a rectangle, drawn by the same blit loop through the
+     * same Z-buffer -- it layers against glyphs exactly as another glyph would.
+     * `model` is kept for such representations because it is what tests and
+     * debugging read to identify the tile.
+     */
+    constructor (public model : string, public color : Color, public fillsCell = false) {}
 
     private cachedFillStyle : string | undefined
     private cachedColor : Color | undefined

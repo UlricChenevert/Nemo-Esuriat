@@ -1,16 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { StreamChunks } from "../../Systems.World/StreamChunks.ts";
+﻿import { describe, it, expect } from "vitest";
+import { StreamChunks } from "../../Systems.Gameloop/StreamChunks.ts";
 import { ChunkWidth, ChunkGridWidth, RecentChunkCacheSize } from "../../Configuration/WorldConstants.ts";
 import { BackgroundLayer } from "../../Configuration/DisplayConstants.ts";
 import { ChunkCoordinate } from "../../Contracts/Components/ChunkCoordinate.ts";
 import { Layer } from "../../Contracts/Components/Layer.ts";
 import { MultiTileRepresentation } from "../../Contracts/Components/MultiTileRepresentation.ts";
 import { Position } from "../../Contracts/Components/Position.ts";
-import { Camera, WorldStreamingResources } from "../../Contracts/SystemResources.ts";
-import { GameWidth } from "../../Configuration/GameConstants.ts";
+import { WorldStreamingResources } from "../../Contracts/SystemResources.ts";
 import { InMemoryKeyValueStore } from "../../Libraries/Storage/InMemoryKeyValueStore.ts";
 import type { GlobalRegistry } from "../../Systems.Framework/Registry.ts";
-import { BuildTestRegistry, AddPlayerAt } from "../TestHelpers/BuildTestRegistry.ts";
+import { BuildTestRegistry, AddPlayerAt, AddCameraAt } from "../TestHelpers/BuildTestRegistry.ts";
+import { FindCameraPosition } from "../../Utilities/CameraUtilities.ts";
 
 const ExpectedChunkCount = ChunkGridWidth * ChunkGridWidth;
 
@@ -44,26 +44,32 @@ function ExpectedKeysAround(centerX : number, centerY : number) : Set<string> {
   return keys;
 }
 
-const HalfViewport = GameWidth / 2;
+/**
+ * Adds the camera looking at the given world tile, and hands back its live
+ * Position so a test can pan it.
+ *
+ * The camera's Position IS the viewport centre, so there is no half-viewport
+ * conversion here any more.
+ */
+function CameraOn(registry : GlobalRegistry, x : number, y : number) : Position {
+  AddCameraAt(registry, x, y);
 
-/** A camera whose viewport centre sits on the given world tile. */
-function CameraOn(x : number, y : number) {
-  return new Camera(x - HalfViewport, y - HalfViewport);
+  return FindCameraPosition(registry)!;
 }
 
 /** Points the camera's centre at a world tile, as panning there would. */
-function MoveCameraTo(camera : Camera, x : number, y : number) {
-  camera.worldOriginX = x - HalfViewport;
-  camera.worldOriginY = y - HalfViewport;
+function MoveCameraTo(camera : Position, x : number, y : number) {
+  camera.x = x;
+  camera.y = y;
 }
 
 describe("initial load", () => {
   it("creates a full buffer of chunks", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry).size).toBe(ExpectedChunkCount);
   });
@@ -71,9 +77,9 @@ describe("initial load", () => {
   it("centres the buffer on the camera's chunk", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(0, 0));
   });
@@ -81,9 +87,9 @@ describe("initial load", () => {
   it("gives each chunk its world position, layer, and terrain", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     let checked = 0;
     registry.ForEachEntityWith([ChunkCoordinate, Position, Layer, MultiTileRepresentation], (_entity, chunk, position, layer, terrain) => {
@@ -99,9 +105,9 @@ describe("initial load", () => {
   it("centres on a distant starting chunk", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(10 * ChunkWidth + 5, 7 * ChunkWidth + 5);
+    CameraOn(registry, 10 * ChunkWidth + 5, 7 * ChunkWidth + 5);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(10, 7));
   });
@@ -111,9 +117,9 @@ describe("negative coordinates", () => {
   it("puts world x = -1 in chunk -1, not chunk 0", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(-1, -1);
+    CameraOn(registry, -1, -1);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(-1, -1));
   });
@@ -121,9 +127,9 @@ describe("negative coordinates", () => {
   it("loads a buffer deep in negative space", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(-10 * ChunkWidth, -10 * ChunkWidth);
+    CameraOn(registry, -10 * ChunkWidth, -10 * ChunkWidth);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(-10, -10));
   });
@@ -133,11 +139,11 @@ describe("movement", () => {
   it("shifts the buffer one column when the camera crosses in x", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, ChunkWidth, 0);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(1, 0));
   });
@@ -145,11 +151,11 @@ describe("movement", () => {
   it("shifts the buffer one row when the camera crosses in y", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, 0, ChunkWidth);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(0, 1));
   });
@@ -159,11 +165,11 @@ describe("movement", () => {
   it("shifts both axes on a diagonal pan", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, ChunkWidth, ChunkWidth);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(1, 1));
   });
@@ -171,10 +177,10 @@ describe("movement", () => {
   it("keeps the buffer size constant while moving", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
-    for (let step = 1; step <= 5; step++) { MoveCameraTo(camera, step * ChunkWidth, step * ChunkWidth); StreamChunks(registry, world, camera); }
+    StreamChunks(registry, world);
+    for (let step = 1; step <= 5; step++) { MoveCameraTo(camera, step * ChunkWidth, step * ChunkWidth); StreamChunks(registry, world); }
 
     expect(LoadedChunkKeys(registry).size).toBe(ExpectedChunkCount);
   });
@@ -182,11 +188,11 @@ describe("movement", () => {
   it("replaces the whole buffer on a teleport", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, 1000 * ChunkWidth, 1000 * ChunkWidth);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(1000, 1000));
   });
@@ -194,11 +200,11 @@ describe("movement", () => {
   it("crossing into negative space shifts correctly", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, -1, -1);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(-1, -1));
   });
@@ -208,13 +214,13 @@ describe("staying within a chunk", () => {
   it("generates nothing further", () => {
     const registry = BuildTestRegistry();
     const { world, GetSampleCount } = BuildWorld();
-    const camera = CameraOn(5, 5);
+    const camera = CameraOn(registry, 5, 5);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     const afterInitialLoad = GetSampleCount();
 
     MoveCameraTo(camera, ChunkWidth - 1, ChunkWidth - 1);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(GetSampleCount()).toBe(afterInitialLoad);
   });
@@ -222,13 +228,13 @@ describe("staying within a chunk", () => {
   it("leaves the chunk entities untouched", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(5, 5);
+    const camera = CameraOn(registry, 5, 5);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     const before = LoadedChunkKeys(registry);
 
     MoveCameraTo(camera, 10, 10);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(before);
   });
@@ -238,16 +244,16 @@ describe("recent chunk cache", () => {
   it("reuses a chunk the camera pans back into", () => {
     const registry = BuildTestRegistry();
     const { world, GetSampleCount } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, ChunkWidth, 0);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     const afterStepOut = GetSampleCount();
 
     MoveCameraTo(camera, 0, 0);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     // Every chunk needed on the way back was just evicted, so all of them come
     // from the cache and no new noise is sampled.
@@ -257,9 +263,9 @@ describe("recent chunk cache", () => {
   it("stays bounded", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    for (let step = 0; step < 20; step++) { MoveCameraTo(camera, step * ChunkWidth, 0); StreamChunks(registry, world, camera); }
+    for (let step = 0; step < 20; step++) { MoveCameraTo(camera, step * ChunkWidth, 0); StreamChunks(registry, world); }
 
     expect(world.recentChunkCache.size).toBeLessThanOrEqual(RecentChunkCacheSize);
   });
@@ -267,11 +273,11 @@ describe("recent chunk cache", () => {
   it("does not resurrect a cached chunk as a live entity", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, 5 * ChunkWidth, 0);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry).size).toBe(ExpectedChunkCount);
   });
@@ -285,7 +291,8 @@ describe("independence from the player", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
 
-    StreamChunks(registry, world, CameraOn(0, 0));
+    CameraOn(registry, 0, 0);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(0, 0));
   });
@@ -293,12 +300,12 @@ describe("independence from the player", () => {
   it("follows the camera away from a stationary player", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    const camera = CameraOn(registry, 0, 0);
     AddPlayerAt(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     MoveCameraTo(camera, 10 * ChunkWidth, 0);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry)).toEqual(ExpectedKeysAround(10, 0));
   });
@@ -306,13 +313,45 @@ describe("independence from the player", () => {
   it("keeps the buffer when the player is destroyed", () => {
     const registry = BuildTestRegistry();
     const { world } = BuildWorld();
-    const camera = CameraOn(0, 0);
+    CameraOn(registry, 0, 0);
     const player = AddPlayerAt(registry, 0, 0);
 
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
     registry.DestroyEntity(player);
-    StreamChunks(registry, world, camera);
+    StreamChunks(registry, world);
 
     expect(LoadedChunkKeys(registry).size).toBe(ExpectedChunkCount);
+  });
+});
+
+describe("without a camera", () => {
+  // There is no view to load terrain around, and terrain regenerates from the
+  // seed on demand, so waiting for one costs nothing.
+  it("loads nothing and does not throw", () => {
+    const registry = BuildTestRegistry();
+    const { world } = BuildWorld();
+
+    expect(() => StreamChunks(registry, world)).not.toThrow();
+    expect(LoadedChunkKeys(registry).size).toBe(0);
+  });
+
+  it("reports no chunks loaded this tick", () => {
+    const registry = BuildTestRegistry();
+    const { world } = BuildWorld();
+
+    StreamChunks(registry, world);
+
+    expect(world.chunksLoadedThisTick).toEqual([]);
+  });
+
+  // Two cameras is a bug worth surfacing at the frame it happens, not silently
+  // streaming around whichever one the hash map yielded first.
+  it("throws when a second camera exists", () => {
+    const registry = BuildTestRegistry();
+    const { world } = BuildWorld();
+    CameraOn(registry, 0, 0);
+    AddCameraAt(registry, 500, 500);
+
+    expect(() => StreamChunks(registry, world)).toThrow(/more than one camera/i);
   });
 });

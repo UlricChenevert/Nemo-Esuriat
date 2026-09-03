@@ -147,6 +147,22 @@ export class GlobalRegistry implements IRegistry {
         return this
     }
 
+    ForEachComponentOf(entity: Entity, callback: (componentClass: IClassConstructor<unknown>, component: unknown) => void): void {
+        // A dead handle holds nothing. Stores are keyed on the whole packed handle --
+        // index AND version -- so a recycled slot cannot leak its previous occupant's
+        // components into the answer; this early return just makes the intent explicit.
+        if (!this.IsAlive(entity)) return
+
+        // Every store asked once, which is the same shape DestroyEntity uses to purge one
+        // entity. Cost is one map lookup per registered component type, which is a few
+        // dozen -- cheaper than scanning any single store's contents.
+        this.ComponentRegistry.forEach((componentRegistry, componentClass)=>{
+            const component = componentRegistry.GetComponent(entity)
+
+            if (component !== undefined) callback(componentClass, component)
+        })
+    }
+
     _getComponentRegistryOrThrow<ComponentType>(component : IClassConstructor<ComponentType>) {
         const attempt = this.ComponentRegistry.get(component)
 

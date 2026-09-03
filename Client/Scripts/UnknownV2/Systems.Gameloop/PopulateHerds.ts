@@ -1,5 +1,4 @@
-import { CharacterRepresentation, TerrainKind, TerrainShadeCount } from "../Configuration/DisplayConstants.ts";
-import { GameWidth } from "../Configuration/GameConstants.ts";
+import { CharacterRepresentation, TerrainKind, TerrainKindOfPaletteIndex } from "../Configuration/DisplayConstants.ts";
 import {
     HerdPlacementAttempts, HerdSpawnChancePerChunk, MaxHerdSize, MaxLiveHerds, MinHerdSize
 } from "../Configuration/WorldConstants.ts";
@@ -8,10 +7,12 @@ import { HerdOwner } from "../Contracts/Components/HerdOwner.ts";
 import { MultiTileRepresentation } from "../Contracts/Components/MultiTileRepresentation.ts";
 import { Owns } from "../Contracts/Components/Owns.ts";
 import { Position } from "../Contracts/Components/Position.ts";
-import type { Camera, WorldStreamingResources } from "../Contracts/SystemResources.ts";
+import type { WorldStreamingResources } from "../Contracts/SystemResources.ts";
 import type { IRandomNumberGenerator } from "../Interfaces/IRandomNumberGenerator.ts";
 import type { IRegistry } from "../Interfaces/IRegistry.ts";
 import { EntityBuilder } from "../Systems.Framework/EntityBuilder.ts";
+import { FindCameraPosition, ScreenTileOfWorldTile } from "../Utilities/CameraUtilities.ts";
+import { IsOutsideViewport } from "../Utilities/PositionUtilities.ts";
 
 /**
  * Populates freshly streamed terrain with herds of animals, and retires the
@@ -28,20 +29,26 @@ import { EntityBuilder } from "../Systems.Framework/EntityBuilder.ts";
  * needs to special-case them.
  */
 export function PopulateHerds (
-    registry : IRegistry, world : WorldStreamingResources, camera : Camera, random : IRandomNumberGenerator
+    registry : IRegistry, world : WorldStreamingResources, random : IRandomNumberGenerator
 ) {
     if (world.chunksLoadedThisTick.length == 0) return
 
-    const viewCenterX = camera.worldOriginX + GameWidth / 2
-    const viewCenterY = camera.worldOriginY + GameWidth / 2
+    // StreamChunks only loads chunks when there is a camera, so an empty list is
+    // the usual way this system sees a camera-less world. Checked anyway, since
+    // nothing stops another system from filling that list.
+    const cameraPosition = FindCameraPosition(registry)
+
+    if (cameraPosition === undefined) return
 
     world.chunksLoadedThisTick.forEach((chunk)=>{
         if (random.Random() >= HerdSpawnChancePerChunk) return
 
-        TrySpawnHerdInChunk(registry, chunk, camera, random)
+        TrySpawnHerdInChunk(registry, chunk, cameraPosition, random)
     })
 
-    RetireDistantHerds(registry, viewCenterX, viewCenterY)
+    // The camera's position IS the view centre, so distances are measured
+    // straight from it.
+    RetireDistantHerds(registry, cameraPosition.x, cameraPosition.y)
 }
 
 /**
@@ -52,7 +59,7 @@ export function PopulateHerds (
  * moment it loaded has nowhere a herd could appear without the player watching
  * it wink into existence.
  */
-function TrySpawnHerdInChunk (registry : IRegistry, chunk : Entity, camera : Camera, random : IRandomNumberGenerator) {
+function TrySpawnHerdInChunk (registry : IRegistry, chunk : Entity, cameraPosition : Position, random : IRandomNumberGenerator) {
     const origin = registry.GetComponent(chunk, Position)
     const terrain = registry.GetComponent(chunk, MultiTileRepresentation)
 
@@ -61,7 +68,7 @@ function TrySpawnHerdInChunk (registry : IRegistry, chunk : Entity, camera : Cam
     const spawn = FindLandTile(origin, terrain, random)
 
     if (!spawn) return
-    if (IsWithinViewport(spawn, camera)) return
+    if (IsWithinViewport(spawn, cameraPosition)) return
 
     const size = MinHerdSize + Math.floor(random.Random() * (MaxHerdSize - MinHerdSize + 1))
 
@@ -80,6 +87,10 @@ function TrySpawnHerdInChunk (registry : IRegistry, chunk : Entity, camera : Cam
  * Samples at random rather than scanning: on the ordinary chunk with a bit of
  * everything on it, the first or second try lands on land, and the scan would be
  * 2500 tiles of work to arrive at the same answer.
+ *
+ * Reads the chunk's own bytes rather than re-sampling the noise through
+ * TerrainKindAtWorldTile. It is already holding the tile buffer, so the buffer
+ * is the cheaper answer -- and both routes band the same noise, so they agree.
  */
 function FindLandTile (origin : Position, terrain : MultiTileRepresentation, random : IRandomNumberGenerator) {
     for (let attempt = 0; attempt < HerdPlacementAttempts; attempt++) {
@@ -92,7 +103,7 @@ function FindLandTile (origin : Position, terrain : MultiTileRepresentation, ran
 
         // The palette packs a terrain kind and a brightness into one byte, so
         // the kind is what survives dividing the shades back out.
-        if (Math.floor(paletteIndex / TerrainShadeCount) === TerrainKind.Water) continue
+        if (TerrainKindOfPaletteIndex(paletteIndex) === TerrainKind.Water) continue
 
         return new Position(origin.x + localX, origin.y + localY)
     }
@@ -100,11 +111,10 @@ function FindLandTile (origin : Position, terrain : MultiTileRepresentation, ran
     return undefined
 }
 
-function IsWithinViewport (position : Position, camera : Camera) {
-    const localX = position.x - camera.worldOriginX
-    const localY = position.y - camera.worldOriginY
+function IsWithinViewport (position : Position, cameraPosition : Position) {
+    const { screenX, screenY } = ScreenTileOfWorldTile(cameraPosition, position.x, position.y)
 
-    return localX >= 0 && localX < GameWidth && localY >= 0 && localY < GameWidth
+    return !IsOutsideViewport(screenX, screenY)
 }
 
 /**

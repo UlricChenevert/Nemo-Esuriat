@@ -14,9 +14,14 @@
     justify-content: center;
 }
 
-/* Backing store is GameWidth tiles * TileSizePixels = 1600px square, set in
-    Game.ts; this scales it up for display while the renderer keeps drawing at
-    native resolution (GameClickEvent rescales clicks back down). */
+/* Backing store is GameWidth tiles * TileSizePixels square, set by the bootstrap
+    in game.html; this scales it to the window while the renderer keeps drawing at
+    native resolution (GameClickEvent rescales clicks back down).
+
+    Note this is what decides how big a tile LOOKS: the canvas is displayed at
+    the window's size whatever its backing store, so apparent tile size is
+    (this size / GameWidth). Raising TileSizePixels sharpens, it does not
+    enlarge. */
 #game {
     width: min(100vw, 100vh);
     height: min(100vw, 100vh);

@@ -1,9 +1,12 @@
-import { FontStyle, MaxTickSeconds } from "../Configuration/GameConstants.ts";
+import { MaxTickSeconds } from "../Configuration/GameConstants.ts";
+import { FontStyle } from "../Configuration/DisplayConstants.ts";
 import type { Entity } from "./Components/Entity.ts";
 import type { MultiTileRepresentation } from "./Components/MultiTileRepresentation.ts";
 import type { IKeyValueStore } from "../Interfaces/IKeyValueStore.ts";
 import type { INoiseGenerator } from "../Interfaces/INoiseGenerator.ts";
 import { LinearCongruentialGenerator } from "../Libraries/Random/LinearCongruentialGenerator.ts";
+import { KeyBindings } from "./Actions/KeyBindings.ts";
+import { ScheduleResources } from "./Schedule.ts";
 
 export class Resources {
     constructor(
@@ -11,7 +14,9 @@ export class Resources {
         public World : WorldStreamingResources,
         public Time = new TimeResources(),
         public Input = new InputResources(),
-        public Random = new LinearCongruentialGenerator(Date.now())
+        public Random = new LinearCongruentialGenerator(Date.now()),
+        /** Which systems the loop runs, and in which mode. See GameLoopStack. */
+        public Schedule = new ScheduleResources()
     ) {}
 }
 
@@ -23,8 +28,38 @@ export class InputResources {
      * Held here rather than derived from the event queue each frame because
      * a held key produces one keydown and then nothing until release, so the
      * queue is empty on almost every frame the key is still down.
+     *
+     * The physical layer, and the only one that speaks in keys: everything
+     * above resolves through `bindings` and deals in actions.
      */
     heldKeyCodes = new Set<string>()
+
+    /**
+     * The entity carrying the debug inspector's ClickListener, when GameConstants.Debug
+     * is set, and undefined otherwise.
+     *
+     * Held here for the same reason the layer stack is: the inspector is a fixture of the
+     * input setup rather than something in the world, and the alternative -- scanning the
+     * registry for "the entity with a Control-gesture listener" -- would be a query
+     * standing in for a fact that was already known when it was created.
+     */
+    debugInspector : Entity | undefined = undefined
+
+    /**
+     * Which action each key means. Swap or Rebind and every consumer follows,
+     * because no system names a key code.
+     */
+    bindings = new KeyBindings()
+
+    /**
+     * Input layer entities, lowest precedence first.
+     *
+     * Array index IS precedence, so resolution walks it backwards and never
+     * sorts. Maintained by Systems.Framework/InputLayerStack; a dead entity here
+     * is expected and pruned rather than prevented, since a layer's owner can be
+     * destroyed at any time.
+     */
+    layerStack : Entity[] = []
 }
 
 /**
@@ -61,23 +96,14 @@ export class TimeResources {
 }
 
 /**
- * Where the viewport sits in the world: the world coordinate drawn at the
- * screen's top-left corner.
+ * Everything chunk streaming needs to load, generate, and retire terrain.
  *
- * A resource rather than a component, because the camera is a property of the
- * view and nothing in the simulation should be reading it. Keeping it here also
- * means the renderer needs no extra query and no rule for which camera wins when
- * two entities claim to be one. PanCamera is what moves it and StreamChunks is
- * what follows it, so where the view goes can change without the renderer
- * knowing anything about it.
- *
- * At the origin, screen coordinates equal world coordinates.
+ * The camera used to live here too, as a resource. It is an entity now --
+ * Position plus IsCamera, found through Utilities/CameraUtilities -- because a
+ * resource gave nothing a handle to aim at. The rule that resource was avoiding,
+ * "which camera wins when two claim to be one", turned out to be one line:
+ * FindUniqueEntityWith throws on the second.
  */
-export class Camera {
-    constructor(public worldOriginX = 0, public worldOriginY = 0) {}
-}
-
-/** Everything chunk streaming needs to load, generate, and retire terrain. */
 export class WorldStreamingResources {
     /**
      * Recently unloaded chunks, newest last. Bounded by StreamChunks so pacing
@@ -112,7 +138,6 @@ export class WorldStreamingResources {
 
 export class RenderingResources {
     canvasContext : CanvasRenderingContext2D
-    Camera = new Camera()
 
     constructor(public canvasElement : HTMLCanvasElement) {
         const temp = canvasElement.getContext("2d", { alpha: false })

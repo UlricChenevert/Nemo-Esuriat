@@ -27,6 +27,9 @@ function InstallCanvasContextStub() {
 
 let canvas : HTMLCanvasElement;
 
+/** What the very first frame drew, which is the start menu rather than the world. */
+const startMenuGlyphs : Array<{ model : string, canvasX : number, canvasY : number }> = [];
+
 beforeAll(async () => {
   InstallCanvasContextStub();
 
@@ -45,17 +48,31 @@ beforeAll(async () => {
 
   const { GameLoop, Initialization, StartGame } = await import("../../Game.ts");
   const { Resources, RenderingResources } = await import("../../Contracts/SystemResources.ts");
-  const { CreateWorldStreamingResources } = await import("../../Systems.World/CreateWorldStreamingResources.ts");
+  const { CreateWorldStreamingResources } = await import("../../Utilities/CreateWorldStreamingResources.ts");
+  const { GameKeyboardEvent } = await import("../../Contracts/Events/KeyBoardEvent.ts");
 
   // Boot through the real entry point, then stop it again -- this is what a
   // caller gets, and leaving the loop running would leak into later tests.
   StartGame(canvas)();
 
-  // One frame. requestAnimationFrame is async in happy-dom, so drive the loop
-  // directly rather than waiting on it.
+  // requestAnimationFrame is async in happy-dom, so drive the loop directly
+  // rather than waiting on it.
   const resources = new Resources(new RenderingResources(canvas), CreateWorldStreamingResources());
   const context = Initialization(resources);
 
+  // Frame one is the start menu: the game boots with a menu layer on top of the
+  // gameplay layer, so the world exists but nothing simulates it yet.
+  drawnGlyphs.length = 0;
+  GameLoop(context.registry, context.eventQueue, context.resources);
+  startMenuGlyphs.push(...drawnGlyphs);
+
+  // Close it the way a player does -- Interact on "Start Game", which is the row
+  // the cursor starts on. Going through the keyboard rather than reaching for
+  // CloseMenu keeps this a test of the boot sequence a player actually gets.
+  context.eventQueue.EnqueueEvent(new GameKeyboardEvent({ code: "Space", altKey: false, shiftKey: false, ctrlKey: false, metaKey: false } as KeyboardEvent, true));
+  GameLoop(context.registry, context.eventQueue, context.resources);
+
+  // Frame three is the first frame of actual play.
   drawnGlyphs.length = 0;
   GameLoop(context.registry, context.eventQueue, context.resources);
 });
@@ -118,6 +135,26 @@ describe("page scrolling over the canvas", () => {
   // Ctrl+arrow and friends are browser shortcuts; PanCamera ignores them too.
   it("leaves modified pan keys alone", () =>
     expect(dispatchKeyDown("ArrowDown", { ctrlKey: true }).defaultPrevented).toBe(false));
+});
+
+// The game opens on a menu, and the menu's loop layer is the only one that runs
+// while it is up -- so the very first frame draws a screen and simulates nothing.
+describe("the start menu", () => {
+  it("draws something", () => expect(startMenuGlyphs.length).toBeGreaterThan(0));
+
+  it("draws its title", () => {
+    const drawn = startMenuGlyphs.map((glyph) => glyph.model).join("");
+    expect(drawn).toContain("UNKNOWN");
+  });
+
+  // No StreamChunks in the menu layer, so nothing generated terrain to draw.
+  it("does not draw the world behind it", () => {
+    const terrain = new Set([CharacterRepresentation.Water, CharacterRepresentation.Grass, CharacterRepresentation.Hill, CharacterRepresentation.Mountain]);
+    expect(startMenuGlyphs.filter((glyph) => terrain.has(glyph.model))).toHaveLength(0);
+  });
+
+  // Far short of the whole viewport: a panel and its text, not a world.
+  it("covers only part of the screen", () => expect(startMenuGlyphs.length).toBeLessThan(GameWidth * GameWidth));
 });
 
 describe("the first frame", () => {
